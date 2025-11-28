@@ -304,7 +304,7 @@ export default function NewSequencePage() {
           created_by: dentist.id,
           last_modified_by: dentist.id,
           title: formData.title || null,
-          global_rationale: formData.globalRationale || null,
+          overall_strategy: formData.globalRationale || null,
           treatment_goals: formData.treatmentGoals,
           status: 'draft',
         })
@@ -322,14 +322,14 @@ export default function NewSequencePage() {
           .from('appointment_groups')
           .insert({
             sequence_id: sequence.id,
+            position: appt.orderIndex,
             title: appt.title,
             appointment_type: appt.appointmentType,
-            objectives: appt.objectives || null,
-            delay_from_previous: appt.delayFromPrevious,
+            objectives: appt.objectives ? [appt.objectives] : null,
+            delay_value: appt.delayFromPrevious,
             delay_unit: appt.delayUnit,
-            delay_reason: appt.delayReason || null,
+            delay_rationale: appt.delayReason || null,
             estimated_duration_minutes: appt.estimatedDuration,
-            order_index: appt.orderIndex,
           })
           .select('id')
           .single()
@@ -340,15 +340,19 @@ export default function NewSequencePage() {
         }
 
         // Create treatments for this appointment
-        const treatmentInserts = appt.treatments.map((t) => ({
-          appointment_group_id: appointmentGroup.id,
-          treatment_code: t.treatmentCode,
-          tooth_number: t.toothNumber,
-          rationale: t.rationale || null,
-          notes: t.notes || null,
-          estimated_duration_minutes: t.estimatedDuration,
-          order_index: t.orderIndex,
-        }))
+        // Get treatment info for each treatment code
+        const treatmentInserts = appt.treatments.map((t) => {
+          const treatmentInfo = getTreatmentById(t.treatmentCode)
+          return {
+            appointment_group_id: appointmentGroup.id,
+            position: t.orderIndex,
+            treatment_type: t.treatmentCode,
+            treatment_category: treatmentInfo?.category || 'other',
+            teeth: t.toothNumber ? [t.toothNumber] : [],
+            rationale_treatment: t.rationale || null,
+            estimated_duration_minutes: t.estimatedDuration,
+          }
+        })
 
         const { error: treatError } = await supabase
           .from('treatments')
