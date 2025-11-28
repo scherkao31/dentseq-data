@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   BarChart3,
+  Lightbulb,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -41,6 +42,11 @@ const navigation = [
     name: 'Statistiques',
     href: '/stats',
     icon: BarChart3,
+  },
+  {
+    name: 'Idées de Plans',
+    href: '/plan-ideas',
+    icon: Lightbulb,
   },
   {
     name: 'Évaluations',
