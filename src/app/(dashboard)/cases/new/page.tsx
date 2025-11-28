@@ -137,7 +137,7 @@ export default function NewCasePage() {
         toast({
           variant: 'destructive',
           title: 'Erreur',
-          description: 'Vous devez être connecté pour créer un cas',
+          description: 'Vous devez être connecté pour créer un plan',
         })
         return
       }
@@ -193,14 +193,14 @@ export default function NewCasePage() {
         toast({
           variant: 'destructive',
           title: 'Erreur',
-          description: 'Impossible de créer le cas clinique',
+          description: 'Impossible de créer le plan de traitement',
         })
         return
       }
 
       toast({
-        title: 'Cas créé',
-        description: 'Le cas clinique a été créé avec succès',
+        title: 'Plan créé',
+        description: 'Le plan de traitement a été créé avec succès',
       })
 
       router.push(`/cases/${newCase.id}`)
@@ -249,7 +249,7 @@ export default function NewCasePage() {
         return (
           <div className="space-y-6">
             <div className="space-y-2">
-              <Label htmlFor="title">Titre du cas *</Label>
+              <Label htmlFor="title">Titre du plan *</Label>
               <Input
                 id="title"
                 placeholder="Ex: Réhabilitation complète arcade supérieure"
@@ -657,7 +657,7 @@ export default function NewCasePage() {
 
   return (
     <>
-      <Header title="Nouveau cas clinique" />
+      <Header title="Nouveau plan de traitement" />
 
       <div className="p-6">
         <div className="max-w-4xl mx-auto space-y-6">
@@ -665,7 +665,7 @@ export default function NewCasePage() {
           <Button variant="ghost" asChild>
             <Link href="/cases">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Retour aux cas
+              Retour aux plans
             </Link>
           </Button>
 
@@ -747,7 +747,7 @@ export default function NewCasePage() {
                 ) : (
                   <>
                     <Save className="h-4 w-4 mr-2" />
-                    Créer le cas
+                    Créer le plan
                   </>
                 )}
               </Button>

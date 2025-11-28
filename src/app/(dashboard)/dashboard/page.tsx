@@ -31,7 +31,7 @@ export default async function DashboardPage() {
             <Button asChild>
               <Link href="/cases/new">
                 <Plus className="h-4 w-4 mr-2" />
-                Nouveau cas
+                Nouveau plan
               </Link>
             </Button>
             <Button variant="outline" asChild>
@@ -47,13 +47,13 @@ export default async function DashboardPage() {
         <div className="grid gap-4 md:grid-cols-3">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Cas cliniques</CardTitle>
+              <CardTitle className="text-sm font-medium">Plans de traitement</CardTitle>
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.cases}</div>
               <p className="text-xs text-muted-foreground">
-                cas enregistrés
+                plans enregistrés
               </p>
             </CardContent>
           </Card>
@@ -87,8 +87,8 @@ export default async function DashboardPage() {
           {/* Recent cases */}
           <Card>
             <CardHeader>
-              <CardTitle>Cas récents</CardTitle>
-              <CardDescription>Les derniers cas cliniques créés</CardDescription>
+              <CardTitle>Plans récents</CardTitle>
+              <CardDescription>Les derniers plans de traitement créés</CardDescription>
             </CardHeader>
             <CardContent>
               {recentCases && recentCases.length > 0 ? (
@@ -117,9 +117,9 @@ export default async function DashboardPage() {
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Aucun cas pour le moment</p>
+                  <p>Aucun plan pour le moment</p>
                   <Button asChild variant="link" className="mt-2">
-                    <Link href="/cases/new">Créer votre premier cas</Link>
+                    <Link href="/cases/new">Créer votre premier plan</Link>
                   </Button>
                 </div>
               )}
@@ -129,8 +129,8 @@ export default async function DashboardPage() {
           {/* Cases needing sequences */}
           <Card>
             <CardHeader>
-              <CardTitle>Cas sans séquence</CardTitle>
-              <CardDescription>Ces cas attendent votre contribution</CardDescription>
+              <CardTitle>Plans sans séquence</CardTitle>
+              <CardDescription>Ces plans attendent votre contribution</CardDescription>
             </CardHeader>
             <CardContent>
               {casesNeedingSequences && casesNeedingSequences.length > 0 ? (
@@ -158,7 +158,7 @@ export default async function DashboardPage() {
               ) : (
                 <div className="text-center py-8 text-muted-foreground">
                   <GitBranch className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                  <p>Tous les cas ont au moins une séquence</p>
+                  <p>Tous les plans ont au moins une séquence</p>
                 </div>
               )}
             </CardContent>

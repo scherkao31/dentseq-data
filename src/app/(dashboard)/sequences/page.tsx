@@ -108,7 +108,7 @@ export default async function SequencesPage({
                           {sequence.title || 'Séquence sans titre'}
                         </h3>
                         <p className="text-sm text-muted-foreground mt-1">
-                          Cas: {sequence.case_number} • {sequence.case_title}
+                          Plan: {sequence.case_number} • {sequence.case_title}
                         </p>
                         <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">

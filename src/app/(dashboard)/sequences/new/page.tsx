@@ -141,7 +141,7 @@ export default function NewSequencePage() {
         toast({
           variant: 'destructive',
           title: 'Erreur',
-          description: 'Impossible de charger le cas clinique',
+          description: 'Impossible de charger le plan de traitement',
         })
         router.push('/cases')
         return
@@ -243,7 +243,7 @@ export default function NewSequencePage() {
       toast({
         variant: 'destructive',
         title: 'Erreur',
-        description: 'Veuillez sélectionner un cas clinique',
+        description: 'Veuillez sélectionner un plan de traitement',
       })
       return
     }
@@ -393,7 +393,7 @@ export default function NewSequencePage() {
                   <CardTitle className="text-lg">{caseData.title}</CardTitle>
                 </div>
                 <CardDescription>
-                  Créez une séquence de traitement pour ce cas clinique
+                  Créez une séquence de traitement pour ce plan
                 </CardDescription>
               </CardHeader>
             </Card>

@@ -70,7 +70,7 @@ export default async function CasesPage({
 
   return (
     <>
-      <Header title="Cas cliniques" />
+      <Header title="Plans de traitement" />
 
       <div className="p-6 space-y-6">
         {/* Actions bar */}
@@ -80,7 +80,7 @@ export default async function CasesPage({
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 type="search"
-                placeholder="Rechercher un cas..."
+                placeholder="Rechercher un plan..."
                 className="pl-9"
                 defaultValue={params.search}
               />
@@ -115,7 +115,7 @@ export default async function CasesPage({
           <Button asChild>
             <Link href="/cases/new">
               <Plus className="h-4 w-4 mr-2" />
-              Nouveau cas
+              Nouveau plan
             </Link>
           </Button>
         </div>
@@ -177,14 +177,14 @@ export default async function CasesPage({
           <Card>
             <CardContent className="flex flex-col items-center justify-center py-12">
               <FileText className="h-12 w-12 text-muted-foreground/50 mb-4" />
-              <h3 className="font-semibold mb-1">Aucun cas trouvé</h3>
+              <h3 className="font-semibold mb-1">Aucun plan trouvé</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Commencez par créer votre premier cas clinique
+                Commencez par créer votre premier plan de traitement
               </p>
               <Button asChild>
                 <Link href="/cases/new">
                   <Plus className="h-4 w-4 mr-2" />
-                  Créer un cas
+                  Créer un plan
                 </Link>
               </Button>
             </CardContent>

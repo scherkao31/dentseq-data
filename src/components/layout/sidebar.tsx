@@ -27,7 +27,7 @@ const navigation = [
     icon: LayoutDashboard,
   },
   {
-    name: 'Cas cliniques',
+    name: 'Plans de traitement',
     href: '/cases',
     icon: FileText,
   },
