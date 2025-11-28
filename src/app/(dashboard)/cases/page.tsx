@@ -1,6 +1,5 @@
 import { Header } from '@/components/layout/header'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
@@ -14,25 +13,7 @@ import { Plus, Search, FileText, GitBranch, Star } from 'lucide-react'
 import Link from 'next/link'
 import { COMPLEXITY_OPTIONS, CASE_STATUS_OPTIONS } from '@/lib/constants'
 import { getCaseOverviews } from '@/lib/supabase/queries'
-
-function getStatusBadgeVariant(status: string | null) {
-  switch (status) {
-    case 'published':
-      return 'success' as const
-    case 'draft':
-      return 'secondary' as const
-    case 'archived':
-      return 'outline' as const
-    default:
-      return 'secondary' as const
-  }
-}
-
-function getStatusLabel(status: string | null) {
-  if (!status) return '-'
-  const option = CASE_STATUS_OPTIONS.find((o) => o.value === status)
-  return option?.label || status
-}
+import { StatusBadge } from '@/components/status/status-control'
 
 function getComplexityDots(complexity: string | null) {
   const levels: Record<string, number> = {
@@ -133,9 +114,10 @@ export default async function CasesPage({
                           <span className="font-mono text-sm text-muted-foreground">
                             {caseItem.case_number}
                           </span>
-                          <Badge variant={getStatusBadgeVariant(caseItem.status)}>
-                            {getStatusLabel(caseItem.status)}
-                          </Badge>
+                          <StatusBadge
+                            status={caseItem.status || 'draft'}
+                            options={CASE_STATUS_OPTIONS}
+                          />
                         </div>
                         <h3 className="font-semibold truncate">{caseItem.title}</h3>
                         <p className="text-sm text-muted-foreground mt-1">

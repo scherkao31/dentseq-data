@@ -152,18 +152,20 @@ export const CONFIDENCE_OPTIONS = [
 
 // Case status
 export const CASE_STATUS_OPTIONS = [
-  { value: 'draft', label: 'Brouillon' },
-  { value: 'published', label: 'Publié' },
-  { value: 'archived', label: 'Archivé' },
+  { value: 'draft', label: 'Brouillon', description: 'En cours de création', color: 'secondary' },
+  { value: 'pending_review', label: 'En attente', description: 'Soumis pour validation', color: 'default' },
+  { value: 'approved', label: 'Approuvé', description: 'Validé et prêt', color: 'success' },
+  { value: 'needs_revision', label: 'À réviser', description: 'Modifications requises', color: 'destructive' },
+  { value: 'archived', label: 'Archivé', description: 'Plus utilisé', color: 'outline' },
 ] as const
 
 // Sequence status
 export const SEQUENCE_STATUS_OPTIONS = [
-  { value: 'draft', label: 'Brouillon' },
-  { value: 'submitted', label: 'Soumis' },
-  { value: 'under_review', label: 'En évaluation' },
-  { value: 'approved', label: 'Approuvé' },
-  { value: 'needs_revision', label: 'À réviser' },
+  { value: 'draft', label: 'Brouillon', description: 'En cours de création', color: 'secondary' },
+  { value: 'submitted', label: 'Soumis', description: 'Soumis pour validation', color: 'default' },
+  { value: 'under_review', label: 'En évaluation', description: 'En cours de revue', color: 'default' },
+  { value: 'approved', label: 'Approuvé', description: 'Validé', color: 'success' },
+  { value: 'needs_revision', label: 'À réviser', description: 'Modifications requises', color: 'destructive' },
 ] as const
 
 // Common medical conditions

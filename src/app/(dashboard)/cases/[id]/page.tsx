@@ -1,17 +1,15 @@
 import { notFound } from 'next/navigation'
 import { Header } from '@/components/layout/header'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  ArrowLeft,
-  Edit,
-  Plus,
   GitBranch,
   Star,
   Clock,
   User,
+  Plus,
 } from 'lucide-react'
 import Link from 'next/link'
 import { formatDate } from '@/lib/utils'
@@ -24,8 +22,11 @@ import {
   COMPLIANCE_OPTIONS,
   PERIO_STAGE_OPTIONS,
   PERIO_GRADE_OPTIONS,
+  SEQUENCE_STATUS_OPTIONS,
 } from '@/lib/constants'
 import { getCaseById, getSequenceOverviewsByCaseId, getDentistById } from '@/lib/supabase/queries'
+import { CaseHeader } from '@/components/cases/case-header'
+import { StatusBadge } from '@/components/status/status-control'
 
 function getLabel(options: readonly { value: string; label: string }[], value: string | null) {
   if (!value) return '-'
@@ -69,42 +70,13 @@ export default async function CaseDetailPage({
       <Header />
 
       <div className="p-6 space-y-6">
-        {/* Back button and title */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
-              <Link href="/cases">
-                <ArrowLeft className="h-5 w-5" />
-              </Link>
-            </Button>
-            <div>
-              <div className="flex items-center gap-2">
-                <span className="font-mono text-sm text-muted-foreground">
-                  {caseData.case_number}
-                </span>
-                <Badge variant={caseData.status === 'published' ? 'default' : 'secondary'}>
-                  {caseData.status === 'published' ? 'Publié' : 'Brouillon'}
-                </Badge>
-              </div>
-              <h1 className="text-2xl font-bold">{caseData.title}</h1>
-            </div>
-          </div>
-
-          <div className="flex gap-2">
-            <Button variant="outline" asChild>
-              <Link href={`/cases/${id}/edit`}>
-                <Edit className="h-4 w-4 mr-2" />
-                Modifier
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link href={`/sequences/new?caseId=${id}`}>
-                <Plus className="h-4 w-4 mr-2" />
-                Créer une séquence
-              </Link>
-            </Button>
-          </div>
-        </div>
+        {/* Back button and title with status control */}
+        <CaseHeader
+          caseId={id}
+          caseNumber={caseData.case_number || ''}
+          title={caseData.title}
+          status={caseData.status || 'draft'}
+        />
 
         {/* Meta info */}
         <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
@@ -318,9 +290,10 @@ export default async function CaseDetailPage({
                               <span className="font-mono text-sm text-muted-foreground">
                                 {sequence.sequence_number}
                               </span>
-                              <Badge variant="secondary">
-                                {sequence.status === 'draft' ? 'Brouillon' : sequence.status}
-                              </Badge>
+                              <StatusBadge
+                                status={sequence.status || 'draft'}
+                                options={SEQUENCE_STATUS_OPTIONS}
+                              />
                             </div>
                             <h3 className="font-semibold">
                               {sequence.title || 'Séquence sans titre'}

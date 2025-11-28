@@ -1,6 +1,5 @@
 import { Header } from '@/components/layout/header'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import {
@@ -15,27 +14,7 @@ import Link from 'next/link'
 import { SEQUENCE_STATUS_OPTIONS } from '@/lib/constants'
 import { getSequenceOverviews } from '@/lib/supabase/queries'
 import { formatDate } from '@/lib/utils'
-
-function getStatusBadgeVariant(status: string | null) {
-  switch (status) {
-    case 'approved':
-      return 'success' as const
-    case 'submitted':
-    case 'under_review':
-      return 'default' as const
-    case 'needs_revision':
-      return 'destructive' as const
-    case 'draft':
-    default:
-      return 'secondary' as const
-  }
-}
-
-function getStatusLabel(status: string | null) {
-  if (!status) return '-'
-  const option = SEQUENCE_STATUS_OPTIONS.find((o) => o.value === status)
-  return option?.label || status
-}
+import { StatusBadge } from '@/components/status/status-control'
 
 export default async function SequencesPage({
   searchParams,
@@ -100,9 +79,10 @@ export default async function SequencesPage({
                           <span className="font-mono text-sm text-muted-foreground">
                             {sequence.sequence_number}
                           </span>
-                          <Badge variant={getStatusBadgeVariant(sequence.status)}>
-                            {getStatusLabel(sequence.status)}
-                          </Badge>
+                          <StatusBadge
+                            status={sequence.status || 'draft'}
+                            options={SEQUENCE_STATUS_OPTIONS}
+                          />
                         </div>
                         <h3 className="font-semibold truncate">
                           {sequence.title || 'Séquence sans titre'}

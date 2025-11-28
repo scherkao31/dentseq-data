@@ -11,6 +11,7 @@ import {
   LogOut,
   Menu,
   X,
+  BarChart3,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -35,6 +36,11 @@ const navigation = [
     name: 'Séquences',
     href: '/sequences',
     icon: GitBranch,
+  },
+  {
+    name: 'Statistiques',
+    href: '/stats',
+    icon: BarChart3,
   },
   {
     name: 'Évaluations',
