@@ -39,6 +39,14 @@ import {
   PERIO_GRADE_OPTIONS,
   MEDICAL_CONDITIONS,
   COMMON_ALLERGIES,
+  PATIENT_PRIORITY_OPTIONS,
+  BUDGET_CONSTRAINT_OPTIONS,
+  TIME_CONSTRAINT_OPTIONS,
+  DENTAL_ANXIETY_OPTIONS,
+  SMOKING_STATUS_OPTIONS,
+  DIABETES_CONTROL_OPTIONS,
+  BRUXISM_OPTIONS,
+  BOP_OPTIONS,
 } from '@/lib/constants'
 
 type FormData = {
@@ -59,6 +67,17 @@ type FormData = {
   perioDiagnosis: string
   missingTeeth: string[]
   additionalNotes: string
+  // Decision Context - Patient Constraints
+  patientPriorities: string[]
+  budgetConstraint: string
+  timeConstraint: string
+  timeConstraintDetails: string
+  dentalAnxiety: string
+  // Decision Context - Risk Factors
+  smokingStatus: string
+  diabetesControl: string
+  bruxism: string
+  bopPercentage: string
 }
 
 const initialFormData: FormData = {
@@ -79,6 +98,16 @@ const initialFormData: FormData = {
   perioDiagnosis: '',
   missingTeeth: [],
   additionalNotes: '',
+  // Decision Context
+  patientPriorities: [],
+  budgetConstraint: '',
+  timeConstraint: '',
+  timeConstraintDetails: '',
+  dentalAnxiety: '',
+  smokingStatus: '',
+  diabetesControl: '',
+  bruxism: '',
+  bopPercentage: '',
 }
 
 const CHIEF_COMPLAINT_SYMPTOMS = [
@@ -95,10 +124,11 @@ const CHIEF_COMPLAINT_SYMPTOMS = [
 ]
 
 const STEPS = [
-  { id: 'chief', title: 'Motif de consultation', description: 'Raison de la consultation' },
+  { id: 'chief', title: 'Motif', description: 'Raison de la consultation' },
   { id: 'patient', title: 'Patient', description: 'Informations sur le patient' },
-  { id: 'medical', title: 'Antécédents', description: 'Histoire médicale' },
-  { id: 'dental', title: 'État dentaire', description: 'Examen clinique' },
+  { id: 'constraints', title: 'Contraintes', description: 'Priorités et contraintes du patient' },
+  { id: 'medical', title: 'Médical', description: 'Antécédents et facteurs de risque' },
+  { id: 'dental', title: 'Dentaire', description: 'Examen clinique' },
   { id: 'review', title: 'Résumé', description: 'Vérification finale' },
 ]
 
@@ -183,6 +213,17 @@ export default function NewCasePage() {
           perio_diagnosis: formData.perioDiagnosis || null,
           missing_teeth: formData.missingTeeth,
           additional_notes: formData.additionalNotes || null,
+          // Decision Context - Patient Constraints
+          patient_priorities: formData.patientPriorities.length > 0 ? formData.patientPriorities : null,
+          budget_constraint: formData.budgetConstraint || null,
+          time_constraint: formData.timeConstraint || null,
+          time_constraint_details: formData.timeConstraintDetails || null,
+          dental_anxiety: formData.dentalAnxiety || null,
+          // Decision Context - Risk Factors
+          smoking_status: formData.smokingStatus || null,
+          diabetes_control: formData.diabetesControl || null,
+          bruxism: formData.bruxism || null,
+          bop_percentage: formData.bopPercentage || null,
           status: 'draft',
         })
         .select('id')
@@ -240,6 +281,15 @@ export default function NewCasePage() {
       updateFormData({ allergies: current.filter((a) => a !== allergy) })
     } else {
       updateFormData({ allergies: [...current, allergy] })
+    }
+  }
+
+  const togglePriority = (priority: string) => {
+    const current = formData.patientPriorities
+    if (current.includes(priority)) {
+      updateFormData({ patientPriorities: current.filter((p) => p !== priority) })
+    } else {
+      updateFormData({ patientPriorities: [...current, priority] })
     }
   }
 
@@ -410,7 +460,106 @@ export default function NewCasePage() {
           </div>
         )
 
-      case 2: // Medical history
+      case 2: // Patient Constraints (NEW STEP)
+        return (
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <Label>Priorités du patient</Label>
+              <p className="text-sm text-muted-foreground mb-2">
+                Qu'est-ce qui compte le plus pour ce patient ? (plusieurs choix possibles)
+              </p>
+              <div className="grid grid-cols-2 gap-3">
+                {PATIENT_PRIORITY_OPTIONS.map((option) => (
+                  <div
+                    key={option.value}
+                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                      formData.patientPriorities.includes(option.value)
+                        ? 'border-primary bg-primary/5'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                    onClick={() => togglePriority(option.value)}
+                  >
+                    <div className="font-medium text-sm">{option.label}</div>
+                    <div className="text-xs text-muted-foreground">{option.description}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Contrainte budgétaire</Label>
+                <Select
+                  value={formData.budgetConstraint}
+                  onValueChange={(value) => updateFormData({ budgetConstraint: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BUDGET_CONSTRAINT_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Contrainte de temps</Label>
+                <Select
+                  value={formData.timeConstraint}
+                  onValueChange={(value) => updateFormData({ timeConstraint: value })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Sélectionner" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {TIME_CONSTRAINT_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {formData.timeConstraint && formData.timeConstraint !== 'no_constraint' && (
+              <div className="space-y-2">
+                <Label htmlFor="timeConstraintDetails">Détails de la contrainte de temps</Label>
+                <Input
+                  id="timeConstraintDetails"
+                  placeholder="Ex: Mariage dans 3 mois, voyage prévu..."
+                  value={formData.timeConstraintDetails}
+                  onChange={(e) => updateFormData({ timeConstraintDetails: e.target.value })}
+                />
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label>Anxiété dentaire</Label>
+              <Select
+                value={formData.dentalAnxiety}
+                onValueChange={(value) => updateFormData({ dentalAnxiety: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner" />
+                </SelectTrigger>
+                <SelectContent>
+                  {DENTAL_ANXIETY_OPTIONS.map((option) => (
+                    <SelectItem key={option.value} value={option.value}>
+                      {option.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )
+
+      case 3: // Medical history + Risk factors
         return (
           <div className="space-y-6">
             <div className="space-y-2">
@@ -450,12 +599,94 @@ export default function NewCasePage() {
               </div>
             </div>
 
+            {/* Risk Factors Section */}
+            <div className="pt-4 border-t">
+              <h4 className="font-medium mb-4">Facteurs de risque</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Tabagisme</Label>
+                  <Select
+                    value={formData.smokingStatus}
+                    onValueChange={(value) => updateFormData({ smokingStatus: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SMOKING_STATUS_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Diabète</Label>
+                  <Select
+                    value={formData.diabetesControl}
+                    onValueChange={(value) => updateFormData({ diabetesControl: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {DIABETES_CONTROL_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Bruxisme</Label>
+                  <Select
+                    value={formData.bruxism}
+                    onValueChange={(value) => updateFormData({ bruxism: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BRUXISM_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Saignement au sondage (BOP)</Label>
+                  <Select
+                    value={formData.bopPercentage}
+                    onValueChange={(value) => updateFormData({ bopPercentage: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Sélectionner" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {BOP_OPTIONS.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+            </div>
+
             <div className="space-y-2">
               <Label htmlFor="medicalNotes">Notes médicales</Label>
               <Textarea
                 id="medicalNotes"
                 placeholder="Informations médicales complémentaires..."
-                rows={3}
+                rows={2}
                 value={formData.medicalNotes}
                 onChange={(e) => updateFormData({ medicalNotes: e.target.value })}
               />
@@ -463,7 +694,7 @@ export default function NewCasePage() {
           </div>
         )
 
-      case 3: // Dental status
+      case 4: // Dental status
         return (
           <div className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
@@ -541,101 +772,90 @@ export default function NewCasePage() {
           </div>
         )
 
-      case 4: // Review
+      case 5: // Review
         return (
-          <div className="space-y-6">
+          <div className="space-y-4">
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-2">
                 <CardTitle className="text-lg">Motif de consultation</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-2">
+              <CardContent className="space-y-1 text-sm">
                 <p><strong>Titre:</strong> {formData.title || '-'}</p>
                 <p><strong>Motif:</strong> {formData.chiefComplaint || '-'}</p>
                 {formData.chiefComplaintSymptoms.length > 0 && (
-                  <div>
-                    <strong>Symptômes:</strong>{' '}
-                    {formData.chiefComplaintSymptoms.join(', ')}
-                  </div>
-                )}
-                <p>
-                  <strong>Complexité:</strong>{' '}
-                  {COMPLEXITY_OPTIONS.find((o) => o.value === formData.complexity)?.label || '-'}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Patient</CardTitle>
-              </CardHeader>
-              <CardContent className="grid grid-cols-2 gap-2 text-sm">
-                <p>
-                  <strong>Âge:</strong>{' '}
-                  {AGE_RANGE_OPTIONS.find((o) => o.value === formData.patientAgeRange)?.label || '-'}
-                </p>
-                <p>
-                  <strong>Sexe:</strong>{' '}
-                  {SEX_OPTIONS.find((o) => o.value === formData.patientSex)?.label || '-'}
-                </p>
-                <p>
-                  <strong>Santé:</strong>{' '}
-                  {GENERAL_HEALTH_OPTIONS.find((o) => o.value === formData.patientGeneralHealth)?.label || '-'}
-                </p>
-                <p>
-                  <strong>Hygiène:</strong>{' '}
-                  {ORAL_HYGIENE_OPTIONS.find((o) => o.value === formData.patientOralHygiene)?.label || '-'}
-                </p>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">Antécédents</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                {formData.medicalConditions.length > 0 ? (
-                  <div>
-                    <strong>Conditions:</strong>{' '}
-                    {formData.medicalConditions
-                      .map((c) => MEDICAL_CONDITIONS.find((m) => m.id === c)?.name)
-                      .filter(Boolean)
-                      .join(', ')}
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">Aucune condition médicale</p>
-                )}
-                {formData.allergies.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    <strong>Allergies:</strong>{' '}
-                    {formData.allergies.map((a) => (
-                      <Badge key={a} variant="destructive" className="text-xs">
-                        {COMMON_ALLERGIES.find((al) => al.id === a)?.name}
-                      </Badge>
-                    ))}
-                  </div>
+                  <p><strong>Symptômes:</strong> {formData.chiefComplaintSymptoms.join(', ')}</p>
                 )}
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">État dentaire</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
-                <p>
-                  <strong>Parodonte:</strong>{' '}
-                  {formData.perioStage
-                    ? `${PERIO_STAGE_OPTIONS.find((o) => o.value === formData.perioStage)?.label} / ${PERIO_GRADE_OPTIONS.find((o) => o.value === formData.perioGrade)?.label}`
-                    : 'Non renseigné'}
-                </p>
-                {formData.missingTeeth.length > 0 && (
+            <div className="grid grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Patient</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1 text-sm">
+                  <p><strong>Âge:</strong> {AGE_RANGE_OPTIONS.find((o) => o.value === formData.patientAgeRange)?.label || '-'}</p>
+                  <p><strong>Sexe:</strong> {SEX_OPTIONS.find((o) => o.value === formData.patientSex)?.label || '-'}</p>
+                  <p><strong>Hygiène:</strong> {ORAL_HYGIENE_OPTIONS.find((o) => o.value === formData.patientOralHygiene)?.label || '-'}</p>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Contraintes</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1 text-sm">
+                  {formData.patientPriorities.length > 0 && (
+                    <p><strong>Priorités:</strong> {formData.patientPriorities.map(p => PATIENT_PRIORITY_OPTIONS.find(o => o.value === p)?.label).join(', ')}</p>
+                  )}
+                  {formData.budgetConstraint && (
+                    <p><strong>Budget:</strong> {BUDGET_CONSTRAINT_OPTIONS.find(o => o.value === formData.budgetConstraint)?.label}</p>
+                  )}
+                  {formData.dentalAnxiety && (
+                    <p><strong>Anxiété:</strong> {DENTAL_ANXIETY_OPTIONS.find(o => o.value === formData.dentalAnxiety)?.label}</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">Facteurs de risque</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1 text-sm">
+                  {formData.smokingStatus && (
+                    <p><strong>Tabac:</strong> {SMOKING_STATUS_OPTIONS.find(o => o.value === formData.smokingStatus)?.label}</p>
+                  )}
+                  {formData.diabetesControl && (
+                    <p><strong>Diabète:</strong> {DIABETES_CONTROL_OPTIONS.find(o => o.value === formData.diabetesControl)?.label}</p>
+                  )}
+                  {formData.bruxism && (
+                    <p><strong>Bruxisme:</strong> {BRUXISM_OPTIONS.find(o => o.value === formData.bruxism)?.label}</p>
+                  )}
+                  {!formData.smokingStatus && !formData.diabetesControl && !formData.bruxism && (
+                    <p className="text-muted-foreground">Non renseigné</p>
+                  )}
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-lg">État dentaire</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-1 text-sm">
                   <p>
-                    <strong>Dents absentes:</strong>{' '}
-                    {formData.missingTeeth.sort((a, b) => parseInt(a) - parseInt(b)).join(', ')}
+                    <strong>Parodonte:</strong>{' '}
+                    {formData.perioStage
+                      ? `${PERIO_STAGE_OPTIONS.find((o) => o.value === formData.perioStage)?.label} / ${PERIO_GRADE_OPTIONS.find((o) => o.value === formData.perioGrade)?.label}`
+                      : 'Non renseigné'}
                   </p>
-                )}
-              </CardContent>
-            </Card>
+                  {formData.missingTeeth.length > 0 && (
+                    <p><strong>Dents absentes:</strong> {formData.missingTeeth.sort((a, b) => parseInt(a) - parseInt(b)).join(', ')}</p>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
           </div>
         )
 

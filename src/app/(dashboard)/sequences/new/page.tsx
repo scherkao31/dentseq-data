@@ -40,6 +40,9 @@ import {
   APPOINTMENT_TYPE_OPTIONS,
   DELAY_UNIT_OPTIONS,
   TREATMENT_GOALS,
+  REJECTION_REASON_OPTIONS,
+  SEQUENCING_REASON_OPTIONS,
+  DELAY_REASON_OPTIONS,
 } from '@/lib/constants'
 import {
   TREATMENT_CATEGORIES,
@@ -51,6 +54,12 @@ import {
 } from '@/lib/constants/treatments'
 import type { ClinicalCase } from '@/types/database'
 
+type Alternative = {
+  treatmentCode: string
+  rejectionReason: string
+  details: string
+}
+
 type Treatment = {
   id: string
   treatmentCode: string
@@ -59,6 +68,9 @@ type Treatment = {
   notes: string
   estimatedDuration: number
   orderIndex: number
+  // Decision context
+  alternatives: Alternative[]
+  sequencingRationale: string
 }
 
 type AppointmentGroup = {
@@ -69,9 +81,12 @@ type AppointmentGroup = {
   delayFromPrevious: number | null
   delayUnit: string
   delayReason: string
+  delayReasonCode: string // Structured reason
   estimatedDuration: number
   treatments: Treatment[]
   orderIndex: number
+  // Sequencing context
+  sequencingReasons: string[]
 }
 
 type FormData = {
@@ -90,6 +105,8 @@ const createTreatment = (orderIndex: number): Treatment => ({
   notes: '',
   estimatedDuration: 15,
   orderIndex,
+  alternatives: [],
+  sequencingRationale: '',
 })
 
 const createAppointment = (orderIndex: number): AppointmentGroup => ({
@@ -100,9 +117,11 @@ const createAppointment = (orderIndex: number): AppointmentGroup => ({
   delayFromPrevious: orderIndex === 0 ? null : 1,
   delayUnit: 'weeks',
   delayReason: '',
+  delayReasonCode: '',
   estimatedDuration: 60,
   treatments: [createTreatment(0)],
   orderIndex,
+  sequencingReasons: [],
 })
 
 export default function NewSequencePage() {
@@ -525,49 +544,96 @@ export default function NewSequencePage() {
 
                       {/* Delay from previous */}
                       {apptIndex > 0 && (
-                        <div className="grid grid-cols-3 gap-4">
-                          <div className="space-y-2">
-                            <Label>Délai depuis la séance précédente</Label>
-                            <Input
-                              type="number"
-                              min={1}
-                              value={appointment.delayFromPrevious || ''}
-                              onChange={(e) =>
-                                updateAppointment(appointment.id, {
-                                  delayFromPrevious: parseInt(e.target.value) || 1,
-                                })
-                              }
-                            />
+                        <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+                          <Label className="text-sm font-medium">Délai depuis la séance précédente</Label>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label className="text-xs text-muted-foreground">Durée</Label>
+                              <Input
+                                type="number"
+                                min={1}
+                                value={appointment.delayFromPrevious || ''}
+                                onChange={(e) =>
+                                  updateAppointment(appointment.id, {
+                                    delayFromPrevious: parseInt(e.target.value) || 1,
+                                  })
+                                }
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs text-muted-foreground">Unité</Label>
+                              <Select
+                                value={appointment.delayUnit}
+                                onValueChange={(v) =>
+                                  updateAppointment(appointment.id, { delayUnit: v })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {DELAY_UNIT_OPTIONS.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                      {opt.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-2">
+                              <Label className="text-xs text-muted-foreground">Raison (optionnel)</Label>
+                              <Select
+                                value={appointment.delayReasonCode}
+                                onValueChange={(v) =>
+                                  updateAppointment(appointment.id, { delayReasonCode: v })
+                                }
+                              >
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Sélectionner..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {DELAY_REASON_OPTIONS.map((opt) => (
+                                    <SelectItem key={opt.value} value={opt.value}>
+                                      {opt.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
                           </div>
                           <div className="space-y-2">
-                            <Label>Unité</Label>
-                            <Select
-                              value={appointment.delayUnit}
-                              onValueChange={(v) =>
-                                updateAppointment(appointment.id, { delayUnit: v })
-                              }
-                            >
-                              <SelectTrigger>
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {DELAY_UNIT_OPTIONS.map((opt) => (
-                                  <SelectItem key={opt.value} value={opt.value}>
-                                    {opt.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Raison du délai</Label>
+                            <Label className="text-xs text-muted-foreground">Détails du délai (optionnel)</Label>
                             <Input
-                              placeholder="Ex: Cicatrisation, temporisation..."
+                              placeholder="Précisions sur le délai..."
                               value={appointment.delayReason}
                               onChange={(e) =>
                                 updateAppointment(appointment.id, { delayReason: e.target.value })
                               }
                             />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Sequencing reasons */}
+                      {apptIndex > 0 && (
+                        <div className="space-y-2">
+                          <Label>Pourquoi cette séance à cette position ? (optionnel)</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {SEQUENCING_REASON_OPTIONS.map((reason) => (
+                              <Badge
+                                key={reason.value}
+                                variant={appointment.sequencingReasons.includes(reason.value) ? 'default' : 'outline'}
+                                className="cursor-pointer"
+                                onClick={() => {
+                                  const reasons = appointment.sequencingReasons.includes(reason.value)
+                                    ? appointment.sequencingReasons.filter(r => r !== reason.value)
+                                    : [...appointment.sequencingReasons, reason.value]
+                                  updateAppointment(appointment.id, { sequencingReasons: reasons })
+                                }}
+                              >
+                                {reason.label}
+                              </Badge>
+                            ))}
                           </div>
                         </div>
                       )}
@@ -693,6 +759,89 @@ export default function NewSequencePage() {
                                   }
                                 />
                               </div>
+
+                              {/* Alternatives considered (collapsible, optional) */}
+                              {treatment.treatmentCode && (
+                                <details className="group">
+                                  <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground">
+                                    + Alternatives envisagées (optionnel - pour enrichir les données)
+                                  </summary>
+                                  <div className="mt-2 space-y-2 pl-2 border-l-2">
+                                    {treatment.alternatives.map((alt, altIndex) => (
+                                      <div key={altIndex} className="grid grid-cols-3 gap-2 items-end">
+                                        <Select
+                                          value={alt.treatmentCode}
+                                          onValueChange={(v) => {
+                                            const newAlts = [...treatment.alternatives]
+                                            newAlts[altIndex] = { ...alt, treatmentCode: v }
+                                            updateTreatment(appointment.id, treatment.id, { alternatives: newAlts })
+                                          }}
+                                        >
+                                          <SelectTrigger className="h-8 text-xs">
+                                            <SelectValue placeholder="Alternative..." />
+                                          </SelectTrigger>
+                                          <SelectContent className="max-h-60">
+                                            {Object.entries(groupedTreatments).map(([category, treatments]) => (
+                                              <div key={category}>
+                                                <div className="px-2 py-1 text-xs font-semibold text-muted-foreground bg-muted">
+                                                  {TREATMENT_CATEGORIES[category as TreatmentCategory]?.name}
+                                                </div>
+                                                {treatments.map((t) => (
+                                                  <SelectItem key={t.id} value={t.id} className="text-xs">
+                                                    {t.name}
+                                                  </SelectItem>
+                                                ))}
+                                              </div>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                        <Select
+                                          value={alt.rejectionReason}
+                                          onValueChange={(v) => {
+                                            const newAlts = [...treatment.alternatives]
+                                            newAlts[altIndex] = { ...alt, rejectionReason: v }
+                                            updateTreatment(appointment.id, treatment.id, { alternatives: newAlts })
+                                          }}
+                                        >
+                                          <SelectTrigger className="h-8 text-xs">
+                                            <SelectValue placeholder="Raison du rejet..." />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                            {REJECTION_REASON_OPTIONS.map((opt) => (
+                                              <SelectItem key={opt.value} value={opt.value} className="text-xs">
+                                                {opt.label}
+                                              </SelectItem>
+                                            ))}
+                                          </SelectContent>
+                                        </Select>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-8"
+                                          onClick={() => {
+                                            const newAlts = treatment.alternatives.filter((_, i) => i !== altIndex)
+                                            updateTreatment(appointment.id, treatment.id, { alternatives: newAlts })
+                                          }}
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    ))}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 text-xs"
+                                      onClick={() => {
+                                        const newAlts = [...treatment.alternatives, { treatmentCode: '', rejectionReason: '', details: '' }]
+                                        updateTreatment(appointment.id, treatment.id, { alternatives: newAlts })
+                                      }}
+                                    >
+                                      <Plus className="h-3 w-3 mr-1" />
+                                      Ajouter une alternative rejetée
+                                    </Button>
+                                  </div>
+                                </details>
+                              )}
                             </CardContent>
                           </Card>
                         ))}
