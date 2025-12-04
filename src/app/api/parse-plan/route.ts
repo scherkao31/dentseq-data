@@ -88,14 +88,22 @@ EXEMPLES:
 
 export async function POST(req: Request) {
   try {
+    // Check for API key
+    if (!process.env.ANTHROPIC_API_KEY) {
+      console.error('ANTHROPIC_API_KEY is not set')
+      return Response.json({ error: 'API configuration error' }, { status: 500 })
+    }
+
     const { rawInput } = await req.json()
 
     if (!rawInput || typeof rawInput !== 'string') {
       return Response.json({ error: 'rawInput is required' }, { status: 400 })
     }
 
+    console.log('Parsing treatment plan:', rawInput)
+
     const result = await generateObject({
-      model: anthropic('claude-3-5-sonnet-20241022'),
+      model: anthropic('claude-sonnet-4-20250514'),
       schema: ParseResultSchema,
       system: SYSTEM_PROMPT,
       prompt: `Parse ce plan de traitement dentaire:\n\n"${rawInput}"\n\nRetourne les éléments structurés avec les dents, types de traitement, et catégories.`,
@@ -119,10 +127,14 @@ export async function POST(req: Request) {
       confidence: result.object.confidence,
       notes: result.object.notes,
     })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error parsing treatment plan:', error)
     return Response.json(
-      { error: 'Failed to parse treatment plan', details: String(error) },
+      {
+        error: 'Failed to parse treatment plan',
+        details: error?.message || String(error),
+        code: error?.code,
+      },
       { status: 500 }
     )
   }
