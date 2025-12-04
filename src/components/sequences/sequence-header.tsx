@@ -1,7 +1,7 @@
 'use client'
 
 import { Button } from '@/components/ui/button'
-import { ArrowLeft, Edit } from 'lucide-react'
+import { Edit } from 'lucide-react'
 import Link from 'next/link'
 import { StatusControl } from '@/components/status/status-control'
 import { SEQUENCE_STATUS_OPTIONS } from '@/lib/constants'
@@ -11,6 +11,11 @@ type SequenceHeaderProps = {
   sequenceNumber: string
   title: string
   status: string
+  // New plan-based props
+  planId?: string
+  planNumber?: string
+  planTitle?: string
+  // Deprecated case props (kept for backward compat)
   caseId?: string
   caseNumber?: string
   caseTitle?: string
@@ -21,40 +26,43 @@ export function SequenceHeader({
   sequenceNumber,
   title,
   status,
+  planId,
+  planNumber,
+  planTitle,
+  // Deprecated
   caseId,
   caseNumber,
   caseTitle,
 }: SequenceHeaderProps) {
+  // Use plan props if available, fallback to case props
+  const parentId = planId || caseId
+  const parentNumber = planNumber || caseNumber
+  const parentTitle = planTitle || caseTitle
+  const parentRoute = planId ? 'plans' : 'cases'
+
   return (
     <div className="flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link href={caseId ? `/cases/${caseId}` : '/sequences'}>
-            <ArrowLeft className="h-5 w-5" />
-          </Link>
-        </Button>
-        <div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-mono text-sm text-muted-foreground">
-              {sequenceNumber}
-            </span>
-            <StatusControl
-              entityType="sequence"
-              entityId={sequenceId}
-              currentStatus={status}
-              statusOptions={SEQUENCE_STATUS_OPTIONS}
-            />
-          </div>
-          <h1 className="text-2xl font-bold">{title}</h1>
-          {caseNumber && caseTitle && (
-            <p className="text-sm text-muted-foreground">
-              Plan:{' '}
-              <Link href={`/cases/${caseId}`} className="hover:underline">
-                {caseNumber} - {caseTitle}
-              </Link>
-            </p>
-          )}
+      <div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-mono text-sm text-muted-foreground">
+            {sequenceNumber}
+          </span>
+          <StatusControl
+            entityType="sequence"
+            entityId={sequenceId}
+            currentStatus={status}
+            statusOptions={SEQUENCE_STATUS_OPTIONS}
+          />
         </div>
+        <h1 className="text-2xl font-bold">{title}</h1>
+        {parentNumber && parentTitle && (
+          <p className="text-sm text-muted-foreground">
+            Plan:{' '}
+            <Link href={`/${parentRoute}/${parentId}`} className="hover:underline">
+              {parentNumber} - {parentTitle}
+            </Link>
+          </p>
+        )}
       </div>
 
       <div className="flex gap-2">

@@ -1,8 +1,8 @@
 import { notFound } from 'next/navigation'
 import { Header } from '@/components/layout/header'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Separator } from '@/components/ui/separator'
 import {
   ArrowLeft,
   Calendar,
@@ -10,18 +10,31 @@ import {
   User,
   GitBranch,
   Target,
+  Wallet,
+  Timer,
+  Heart,
+  Brain,
+  FileText,
 } from 'lucide-react'
 import Link from 'next/link'
+import { Button } from '@/components/ui/button'
 import { formatDate } from '@/lib/utils'
 import {
   SEQUENCE_STATUS_OPTIONS,
   APPOINTMENT_TYPE_OPTIONS,
   DELAY_UNIT_OPTIONS,
   TREATMENT_GOALS,
+  AGE_RANGE_OPTIONS,
+  SEX_OPTIONS,
+  BUDGET_CONSTRAINT_OPTIONS,
+  TIME_CONSTRAINT_OPTIONS,
+  PATIENT_PRIORITY_OPTIONS,
+  DENTAL_ANXIETY_OPTIONS,
 } from '@/lib/constants'
-import { TREATMENTS, getTreatmentById } from '@/lib/constants/treatments'
+import { TREATMENT_CATEGORIES, getTreatmentById } from '@/lib/constants/treatments'
 import { createClient } from '@/lib/supabase/server'
 import { SequenceHeader } from '@/components/sequences/sequence-header'
+import type { TreatmentPlan, TreatmentCategory } from '@/types/database'
 
 async function getSequenceWithDetails(id: string) {
   const supabase = await createClient()
@@ -35,12 +48,16 @@ async function getSequenceWithDetails(id: string) {
 
   if (seqError || !sequence) return null
 
-  // Get case info
-  const { data: caseData } = await supabase
-    .from('clinical_cases')
-    .select('id, case_number, title')
-    .eq('id', sequence.case_id)
-    .single()
+  // Get plan info (new structure)
+  let plan: TreatmentPlan | null = null
+  if (sequence.plan_id) {
+    const { data: planData } = await supabase
+      .from('treatment_plans')
+      .select('*')
+      .eq('id', sequence.plan_id)
+      .single()
+    plan = planData as unknown as TreatmentPlan
+  }
 
   // Get creator
   const { data: creator } = await supabase
@@ -74,7 +91,7 @@ async function getSequenceWithDetails(id: string) {
 
   return {
     ...sequence,
-    case: caseData,
+    plan,
     creator_name: creator?.full_name || 'Inconnu',
     appointments: appointmentsWithTreatments,
   }
@@ -104,15 +121,23 @@ export default async function SequenceDetailPage({
       <Header />
 
       <div className="p-6 space-y-6">
+        {/* Back button */}
+        <Button variant="ghost" asChild>
+          <Link href={sequence.plan ? `/plans/${sequence.plan.id}` : '/sequences'}>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            {sequence.plan ? 'Retour au plan' : 'Retour aux séquences'}
+          </Link>
+        </Button>
+
         {/* Header with status control */}
         <SequenceHeader
           sequenceId={id}
           sequenceNumber={sequence.sequence_number || ''}
           title={sequence.title || 'Séquence sans titre'}
           status={sequence.status || 'draft'}
-          caseId={sequence.case?.id}
-          caseNumber={sequence.case?.case_number}
-          caseTitle={sequence.case?.title}
+          planId={sequence.plan?.id}
+          planNumber={sequence.plan?.plan_number || undefined}
+          planTitle={sequence.plan?.title || sequence.plan?.raw_input}
         />
 
         {/* Meta info */}
@@ -130,6 +155,126 @@ export default async function SequenceDetailPage({
             {sequence.appointments.length} séance(s)
           </div>
         </div>
+
+        {/* Plan info card */}
+        {sequence.plan && (
+          <Card>
+            <CardHeader className="pb-3">
+              <div className="flex items-center gap-2">
+                <FileText className="h-5 w-5" />
+                <CardTitle className="text-base">Plan de traitement</CardTitle>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-center gap-2 mb-2">
+                <Badge variant="outline">{sequence.plan.plan_number}</Badge>
+                {sequence.plan.title && (
+                  <span className="font-medium">{sequence.plan.title}</span>
+                )}
+              </div>
+              <p className="font-mono text-sm text-muted-foreground">{sequence.plan.raw_input}</p>
+              {sequence.plan.dentistry_types && sequence.plan.dentistry_types.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {sequence.plan.dentistry_types.map((type: TreatmentCategory) => (
+                    <Badge key={type} variant="secondary" className={`text-xs ${TREATMENT_CATEGORIES[type]?.color || ''}`}>
+                      {TREATMENT_CATEGORIES[type]?.name || type}
+                    </Badge>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Patient context card - NEW */}
+        <Card>
+          <CardHeader className="pb-3">
+            <div className="flex items-center gap-2">
+              <User className="h-5 w-5" />
+              <CardTitle className="text-base">Contexte patient</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {/* Demographics */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Âge</p>
+                <p className="font-medium">
+                  {getLabel(AGE_RANGE_OPTIONS, sequence.patient_age_range)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Sexe</p>
+                <p className="font-medium">
+                  {getLabel(SEX_OPTIONS, sequence.patient_sex)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">
+                  <Wallet className="h-3 w-3 inline mr-1" />
+                  Budget
+                </p>
+                <p className="font-medium">
+                  {getLabel(BUDGET_CONSTRAINT_OPTIONS, sequence.budget_constraint)}
+                </p>
+              </div>
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">
+                  <Timer className="h-3 w-3 inline mr-1" />
+                  Temps
+                </p>
+                <p className="font-medium">
+                  {getLabel(TIME_CONSTRAINT_OPTIONS, sequence.time_constraint)}
+                </p>
+                {sequence.time_constraint_details && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {sequence.time_constraint_details}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <Separator />
+
+            {/* Priorities */}
+            {sequence.patient_priorities && sequence.patient_priorities.length > 0 && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-2 flex items-center gap-1">
+                  <Heart className="h-3 w-3" />
+                  Priorités du patient
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {sequence.patient_priorities.map((priority: string) => (
+                    <Badge key={priority} variant="secondary">
+                      {PATIENT_PRIORITY_OPTIONS.find(o => o.value === priority)?.label || priority}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Anxiety */}
+            {sequence.dental_anxiety && sequence.dental_anxiety !== 'none' && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">
+                  <Brain className="h-3 w-3 inline mr-1" />
+                  Anxiété dentaire
+                </p>
+                <Badge variant={sequence.dental_anxiety === 'severe' ? 'destructive' : 'secondary'}>
+                  {getLabel(DENTAL_ANXIETY_OPTIONS, sequence.dental_anxiety)}
+                </Badge>
+              </div>
+            )}
+
+            {/* Additional context */}
+            {sequence.additional_context && (
+              <div>
+                <p className="text-sm text-muted-foreground mb-1">Contexte additionnel</p>
+                <p className="text-sm">{sequence.additional_context}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Strategy and goals */}
         <div className="grid gap-6 md:grid-cols-2">

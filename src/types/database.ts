@@ -1,5 +1,37 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
+// ============================================================================
+// NEW STRUCTURE: Treatment Plan Item (parsed from AI)
+// ============================================================================
+export interface TreatmentPlanItem {
+  id: string
+  raw_text: string                    // Original shorthand: "46 démonter CC + prov"
+  teeth: string[]                     // ["46"]
+  treatment_type: string | null       // Matched treatment ID or null if custom
+  treatment_description: string       // "Dépose couronne + provisoire"
+  category: TreatmentCategory         // "restorative"
+}
+
+export type TreatmentCategory =
+  | 'diagnostic'
+  | 'preventive'
+  | 'restorative'
+  | 'endodontic'
+  | 'periodontal'
+  | 'surgical'
+  | 'implant'
+  | 'prosthetic'
+  | 'orthodontic'
+  | 'other'
+
+export type PlanStatus = 'draft' | 'active' | 'completed' | 'archived'
+export type BudgetConstraint = 'no_constraint' | 'moderate' | 'limited' | 'very_limited'
+export type TimeConstraint = 'no_constraint' | 'moderate' | 'urgent' | 'very_urgent'
+export type PatientPriority = 'function' | 'aesthetics' | 'cost' | 'time' | 'durability' | 'minimal_intervention'
+export type DentalAnxiety = 'none' | 'mild' | 'moderate' | 'severe'
+export type AgeRange = '18-30' | '31-45' | '46-60' | '61-75' | '75+'
+export type Sex = 'male' | 'female' | 'other'
+
 export type Database = {
   public: {
     Tables: {
@@ -56,6 +88,156 @@ export type Database = {
           auth_user_id?: string | null
         }
       }
+      // ============================================================================
+      // NEW: treatment_plans (lightweight, AI-parsed)
+      // ============================================================================
+      treatment_plans: {
+        Row: {
+          id: string
+          created_by: string | null
+          last_modified_by: string | null
+          plan_number: string | null
+          title: string | null
+          raw_input: string
+          treatment_items: TreatmentPlanItem[]
+          dentistry_types: TreatmentCategory[]
+          teeth_involved: string[]
+          ai_parsed: boolean
+          ai_parsing_confidence: number | null
+          user_confirmed: boolean
+          notes: string | null
+          status: PlanStatus
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          created_by?: string | null
+          last_modified_by?: string | null
+          plan_number?: string | null
+          title?: string | null
+          raw_input: string
+          treatment_items?: TreatmentPlanItem[]
+          dentistry_types?: TreatmentCategory[]
+          teeth_involved?: string[]
+          ai_parsed?: boolean
+          ai_parsing_confidence?: number | null
+          user_confirmed?: boolean
+          notes?: string | null
+          status?: PlanStatus
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          created_by?: string | null
+          last_modified_by?: string | null
+          plan_number?: string | null
+          title?: string | null
+          raw_input?: string
+          treatment_items?: TreatmentPlanItem[]
+          dentistry_types?: TreatmentCategory[]
+          teeth_involved?: string[]
+          ai_parsed?: boolean
+          ai_parsing_confidence?: number | null
+          user_confirmed?: boolean
+          notes?: string | null
+          status?: PlanStatus
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      // ============================================================================
+      // UPDATED: treatment_sequences (now with patient context)
+      // ============================================================================
+      treatment_sequences: {
+        Row: {
+          id: string
+          plan_id: string | null  // NEW: links to treatment_plans
+          case_id: string | null  // DEPRECATED: kept for backward compat
+          created_by: string | null
+          last_modified_by: string | null
+          sequence_number: string | null
+          title: string | null
+          overall_strategy: string | null
+          treatment_goals: string[] | null
+          constraints_considered: Json
+          alternatives_considered: Json
+          expected_prognosis: Database['public']['Enums']['prognosis'] | null
+          expected_duration_months: number | null
+          success_criteria: string | null
+          status: Database['public']['Enums']['sequence_status']
+          submitted_at: string | null
+          created_at: string
+          updated_at: string
+          // NEW: Patient context fields
+          patient_age_range: AgeRange | null
+          patient_sex: Sex | null
+          budget_constraint: BudgetConstraint | null
+          time_constraint: TimeConstraint | null
+          time_constraint_details: string | null
+          patient_priorities: PatientPriority[] | null
+          dental_anxiety: DentalAnxiety | null
+          additional_context: string | null
+        }
+        Insert: {
+          id?: string
+          plan_id?: string | null
+          case_id?: string | null
+          created_by?: string | null
+          last_modified_by?: string | null
+          sequence_number?: string | null
+          title?: string | null
+          overall_strategy?: string | null
+          treatment_goals?: string[] | null
+          constraints_considered?: Json
+          alternatives_considered?: Json
+          expected_prognosis?: Database['public']['Enums']['prognosis'] | null
+          expected_duration_months?: number | null
+          success_criteria?: string | null
+          status?: Database['public']['Enums']['sequence_status']
+          submitted_at?: string | null
+          created_at?: string
+          updated_at?: string
+          patient_age_range?: AgeRange | null
+          patient_sex?: Sex | null
+          budget_constraint?: BudgetConstraint | null
+          time_constraint?: TimeConstraint | null
+          time_constraint_details?: string | null
+          patient_priorities?: PatientPriority[] | null
+          dental_anxiety?: DentalAnxiety | null
+          additional_context?: string | null
+        }
+        Update: {
+          id?: string
+          plan_id?: string | null
+          case_id?: string | null
+          created_by?: string | null
+          last_modified_by?: string | null
+          sequence_number?: string | null
+          title?: string | null
+          overall_strategy?: string | null
+          treatment_goals?: string[] | null
+          constraints_considered?: Json
+          alternatives_considered?: Json
+          expected_prognosis?: Database['public']['Enums']['prognosis'] | null
+          expected_duration_months?: number | null
+          success_criteria?: string | null
+          status?: Database['public']['Enums']['sequence_status']
+          submitted_at?: string | null
+          created_at?: string
+          updated_at?: string
+          patient_age_range?: AgeRange | null
+          patient_sex?: Sex | null
+          budget_constraint?: BudgetConstraint | null
+          time_constraint?: TimeConstraint | null
+          time_constraint_details?: string | null
+          patient_priorities?: PatientPriority[] | null
+          dental_anxiety?: DentalAnxiety | null
+          additional_context?: string | null
+        }
+      }
+      // Keep old clinical_cases for backward compatibility (deprecated)
       clinical_cases: {
         Row: {
           id: string
@@ -165,65 +347,6 @@ export type Database = {
           additional_notes?: string | null
           status?: Database['public']['Enums']['case_status']
           published_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-      }
-      treatment_sequences: {
-        Row: {
-          id: string
-          case_id: string
-          created_by: string | null
-          last_modified_by: string | null
-          sequence_number: string | null
-          title: string | null
-          overall_strategy: string | null
-          treatment_goals: string[] | null
-          constraints_considered: Json
-          alternatives_considered: Json
-          expected_prognosis: Database['public']['Enums']['prognosis'] | null
-          expected_duration_months: number | null
-          success_criteria: string | null
-          status: Database['public']['Enums']['sequence_status']
-          submitted_at: string | null
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          case_id: string
-          created_by?: string | null
-          last_modified_by?: string | null
-          sequence_number?: string | null
-          title?: string | null
-          overall_strategy?: string | null
-          treatment_goals?: string[] | null
-          constraints_considered?: Json
-          alternatives_considered?: Json
-          expected_prognosis?: Database['public']['Enums']['prognosis'] | null
-          expected_duration_months?: number | null
-          success_criteria?: string | null
-          status?: Database['public']['Enums']['sequence_status']
-          submitted_at?: string | null
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          case_id?: string
-          created_by?: string | null
-          last_modified_by?: string | null
-          sequence_number?: string | null
-          title?: string | null
-          overall_strategy?: string | null
-          treatment_goals?: string[] | null
-          constraints_considered?: Json
-          alternatives_considered?: Json
-          expected_prognosis?: Database['public']['Enums']['prognosis'] | null
-          expected_duration_months?: number | null
-          success_criteria?: string | null
-          status?: Database['public']['Enums']['sequence_status']
-          submitted_at?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -454,6 +577,50 @@ export type Database = {
       }
     }
     Views: {
+      plan_overview: {
+        Row: {
+          id: string | null
+          plan_number: string | null
+          title: string | null
+          raw_input: string | null
+          dentistry_types: TreatmentCategory[] | null
+          teeth_involved: string[] | null
+          status: PlanStatus | null
+          ai_parsed: boolean | null
+          user_confirmed: boolean | null
+          created_at: string | null
+          updated_at: string | null
+          created_by_name: string | null
+          sequence_count: number | null
+          approved_sequence_count: number | null
+        }
+      }
+      sequence_overview: {
+        Row: {
+          id: string | null
+          sequence_number: string | null
+          title: string | null
+          status: Database['public']['Enums']['sequence_status'] | null
+          plan_id: string | null
+          plan_number: string | null
+          plan_title: string | null
+          plan_raw_input: string | null
+          patient_age_range: AgeRange | null
+          patient_sex: Sex | null
+          budget_constraint: BudgetConstraint | null
+          time_constraint: TimeConstraint | null
+          patient_priorities: PatientPriority[] | null
+          dental_anxiety: DentalAnxiety | null
+          created_at: string | null
+          updated_at: string | null
+          created_by_name: string | null
+          appointment_count: number | null
+          treatment_count: number | null
+          evaluation_count: number | null
+          avg_score: number | null
+        }
+      }
+      // Keep old view for backward compat
       case_overview: {
         Row: {
           id: string | null
@@ -469,29 +636,6 @@ export type Database = {
           unique_contributors: number | null
           total_evaluations: number | null
           avg_score: number | null
-        }
-      }
-      sequence_overview: {
-        Row: {
-          id: string | null
-          sequence_number: string | null
-          title: string | null
-          status: Database['public']['Enums']['sequence_status'] | null
-          case_id: string | null
-          case_number: string | null
-          case_title: string | null
-          created_at: string | null
-          updated_at: string | null
-          created_by_name: string | null
-          last_modified_by_name: string | null
-          appointment_count: number | null
-          treatment_count: number | null
-          evaluation_count: number | null
-          avg_score: number | null
-          avg_clinical_validity: number | null
-          avg_completeness: number | null
-          avg_sequencing: number | null
-          avg_feasibility: number | null
         }
       }
     }
@@ -527,6 +671,11 @@ export type Database = {
       delay_unit: 'days' | 'weeks' | 'months'
       confidence_level: 'high' | 'moderate' | 'low'
       case_status: 'draft' | 'published' | 'archived'
+      plan_status: 'draft' | 'active' | 'completed' | 'archived'
+      budget_constraint: 'no_constraint' | 'moderate' | 'limited' | 'very_limited'
+      time_constraint: 'no_constraint' | 'moderate' | 'urgent' | 'very_urgent'
+      patient_priority: 'function' | 'aesthetics' | 'cost' | 'time' | 'durability' | 'minimal_intervention'
+      dental_anxiety: 'none' | 'mild' | 'moderate' | 'severe'
       sequence_status: 'draft' | 'submitted' | 'under_review' | 'approved' | 'needs_revision'
     }
   }
@@ -539,14 +688,18 @@ export type Enums<T extends keyof Database['public']['Enums']> = Database['publi
 export type Views<T extends keyof Database['public']['Views']> =
   Database['public']['Views'][T]['Row']
 
-// Convenience exports
+// Convenience exports - NEW STRUCTURE
 export type Dentist = Tables<'dentists'>
-export type ClinicalCase = Tables<'clinical_cases'>
+export type TreatmentPlan = Tables<'treatment_plans'>
 export type TreatmentSequence = Tables<'treatment_sequences'>
 export type AppointmentGroup = Tables<'appointment_groups'>
 export type Treatment = Tables<'treatments'>
 export type SequenceEvaluation = Tables<'sequence_evaluations'>
 export type ActivityLog = Tables<'activity_log'>
 
-export type CaseOverview = Views<'case_overview'>
+export type PlanOverview = Views<'plan_overview'>
 export type SequenceOverview = Views<'sequence_overview'>
+
+// DEPRECATED - Keep for backward compatibility
+export type ClinicalCase = Tables<'clinical_cases'>
+export type CaseOverview = Views<'case_overview'>

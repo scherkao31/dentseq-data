@@ -30,7 +30,7 @@ const navigation = [
   },
   {
     name: 'Plans de traitement',
-    href: '/cases',
+    href: '/plans',
     icon: FileText,
   },
   {

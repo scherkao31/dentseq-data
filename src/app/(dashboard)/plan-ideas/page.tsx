@@ -21,11 +21,11 @@ import { cn } from '@/lib/utils'
 import { useRef, useEffect, useState } from 'react'
 
 const STARTER_PROMPTS = [
-  "Suggère-moi 3 idées de cas cliniques pour améliorer la diversité du dataset",
-  "Quels types de cas manquent le plus dans notre base de données ?",
-  "Propose un cas complexe impliquant de l'implantologie",
-  "Génère une idée de cas parodontal avec un patient âgé",
-  "Suggère un cas simple pour un patient jeune et anxieux",
+  "Suggère-moi 3 idées de plans de traitement pour améliorer la diversité du dataset",
+  "Quelles catégories de traitement manquent le plus ?",
+  "Propose un plan impliquant de l'implantologie avec différents contextes patients",
+  "Génère un plan parodontal complexe et des séquences pour patient anxieux vs non-anxieux",
+  "Suggère un plan restauratif avec des variantes selon les contraintes budget/temps",
 ]
 
 const chatTransport = new DefaultChatTransport({ api: '/api/chat' })
@@ -80,7 +80,7 @@ export default function PlanIdeasPage() {
                 Assistant IA - Générateur d'idées
               </CardTitle>
               <CardDescription>
-                Discutez avec l'IA pour générer des idées de cas cliniques basées sur votre dataset actuel
+                Discutez avec l'IA pour générer des idées de plans de traitement et de contextes patients basés sur votre dataset actuel
               </CardDescription>
             </CardHeader>
             <CardContent className="flex-1 flex flex-col min-h-0">
@@ -91,8 +91,8 @@ export default function PlanIdeasPage() {
                     <Lightbulb className="h-12 w-12 text-muted-foreground/50 mb-4" />
                     <h3 className="font-semibold mb-2">Commencez la conversation</h3>
                     <p className="text-sm text-muted-foreground max-w-md">
-                      Demandez à l'IA de vous suggérer des idées de cas cliniques pour enrichir votre dataset.
-                      L'IA analysera vos cas existants pour proposer des suggestions pertinentes.
+                      Demandez à l'IA de vous suggérer des idées de plans de traitement et des contextes patients pour enrichir votre dataset.
+                      L'IA analysera vos plans et séquences existants pour proposer des suggestions pertinentes.
                     </p>
                   </div>
                 ) : (
@@ -154,7 +154,7 @@ export default function PlanIdeasPage() {
                   <Textarea
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
-                    placeholder="Demandez des idées de cas cliniques..."
+                    placeholder="Demandez des idées de plans de traitement..."
                     className="min-h-[60px] resize-none"
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
@@ -220,13 +220,13 @@ export default function PlanIdeasPage() {
                   1. Cliquez sur une suggestion ou tapez votre propre question
                 </p>
                 <p>
-                  2. L'IA analysera votre dataset et suggérera des cas pertinents
+                  2. L'IA analysera vos plans et séquences pour suggérer des idées pertinentes
                 </p>
                 <p>
                   3. Continuez la conversation pour affiner les idées
                 </p>
                 <p>
-                  4. Utilisez les idées comme inspiration pour créer de nouveaux plans
+                  4. Utilisez les idées pour créer de nouveaux plans avec différents contextes patients
                 </p>
               </CardContent>
             </Card>
