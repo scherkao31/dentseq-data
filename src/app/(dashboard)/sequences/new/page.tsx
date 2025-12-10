@@ -612,6 +612,38 @@ export default function NewSequencePage() {
                   </div>
                 )}
               </CardHeader>
+              {/* Treatment items from the plan */}
+              {planData.treatment_items && (planData.treatment_items as TreatmentPlanItem[]).length > 0 && (
+                <CardContent className="pt-0">
+                  <Separator className="mb-4" />
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium text-muted-foreground">Traitements à séquencer</Label>
+                    <div className="space-y-2">
+                      {(planData.treatment_items as TreatmentPlanItem[]).map((item) => (
+                        <div
+                          key={item.id}
+                          className="flex items-start gap-3 p-2 rounded-md bg-muted/50 text-sm"
+                        >
+                          <Badge
+                            variant="outline"
+                            className={`shrink-0 text-xs ${TREATMENT_CATEGORIES[item.category]?.color || ''}`}
+                          >
+                            {TREATMENT_CATEGORIES[item.category]?.name || item.category}
+                          </Badge>
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium">{item.treatment_description}</p>
+                            {item.teeth.length > 0 && (
+                              <p className="text-xs text-muted-foreground">
+                                Dent{item.teeth.length > 1 ? 's' : ''}: {item.teeth.join(', ')}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              )}
             </Card>
           )}
 
@@ -756,35 +788,6 @@ export default function NewSequencePage() {
                   rows={2}
                   value={formData.additionalContext}
                   onChange={(e) => updateFormData({ additionalContext: e.target.value })}
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Sequence info */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Stratégie de traitement</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Titre de la séquence (optionnel)</Label>
-                <Input
-                  id="title"
-                  placeholder="Ex: Approche conservatrice - Phase initiale"
-                  value={formData.title}
-                  onChange={(e) => updateFormData({ title: e.target.value })}
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="globalRationale">Raisonnement global</Label>
-                <Textarea
-                  id="globalRationale"
-                  placeholder="Expliquez votre approche thérapeutique globale..."
-                  rows={3}
-                  value={formData.globalRationale}
-                  onChange={(e) => updateFormData({ globalRationale: e.target.value })}
                 />
               </div>
             </CardContent>
