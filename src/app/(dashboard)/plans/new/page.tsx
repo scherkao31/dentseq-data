@@ -180,7 +180,7 @@ export default function NewPlanPage() {
         .single()
 
       if (error) {
-        console.error('Error creating plan:', error)
+        console.error('Error creating plan:', error.message, error.details, error.hint, error.code)
         throw error
       }
 

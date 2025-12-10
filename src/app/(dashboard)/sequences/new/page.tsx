@@ -116,20 +116,23 @@ const createTreatment = (orderIndex: number): Treatment => ({
   orderRationale: '',
 })
 
-const createAppointment = (orderIndex: number): AppointmentGroup => ({
-  id: crypto.randomUUID(),
-  title: `Séance ${orderIndex + 1}`,
-  appointmentType: 'treatment',
-  objectives: '',
-  delayFromPrevious: orderIndex === 0 ? null : 1,
-  delayUnit: 'weeks',
-  delayReason: '',
-  delayRationale: '',
-  groupingRationale: '',
-  estimatedDuration: 60,
-  treatments: [createTreatment(0)],
-  orderIndex,
-})
+const createAppointment = (orderIndex: number): AppointmentGroup => {
+  const initialTreatment = createTreatment(0)
+  return {
+    id: crypto.randomUUID(),
+    title: `Séance ${orderIndex + 1}`,
+    appointmentType: 'treatment',
+    objectives: '',
+    delayFromPrevious: orderIndex === 0 ? null : 1,
+    delayUnit: 'weeks',
+    delayReason: '',
+    delayRationale: '',
+    groupingRationale: '',
+    estimatedDuration: initialTreatment.estimatedDuration, // Auto-calculated from treatments
+    treatments: [initialTreatment],
+    orderIndex,
+  }
+}
 
 export default function NewSequencePage() {
   const router = useRouter()
@@ -306,11 +309,21 @@ export default function NewSequencePage() {
     updateFormData({ appointments: updated })
   }
 
+  // Helper to calculate total duration from treatments
+  const calculateAppointmentDuration = (treatments: Treatment[]): number => {
+    return treatments.reduce((sum, t) => sum + (t.estimatedDuration || 0), 0)
+  }
+
   const addTreatment = (appointmentId: string) => {
     const updated = formData.appointments.map((a) => {
       if (a.id === appointmentId) {
         const newIndex = a.treatments.length
-        return { ...a, treatments: [...a.treatments, createTreatment(newIndex)] }
+        const newTreatments = [...a.treatments, createTreatment(newIndex)]
+        return {
+          ...a,
+          treatments: newTreatments,
+          estimatedDuration: calculateAppointmentDuration(newTreatments),
+        }
       }
       return a
     })
@@ -324,7 +337,11 @@ export default function NewSequencePage() {
         const treatments = a.treatments
           .filter((t) => t.id !== treatmentId)
           .map((t, idx) => ({ ...t, orderIndex: idx }))
-        return { ...a, treatments }
+        return {
+          ...a,
+          treatments,
+          estimatedDuration: calculateAppointmentDuration(treatments),
+        }
       }
       return a
     })
@@ -341,7 +358,11 @@ export default function NewSequencePage() {
         const treatments = a.treatments.map((t) =>
           t.id === treatmentId ? { ...t, ...updates } : t
         )
-        return { ...a, treatments }
+        // Recalculate duration if treatment duration changed
+        const newDuration = 'estimatedDuration' in updates
+          ? calculateAppointmentDuration(treatments)
+          : a.estimatedDuration
+        return { ...a, treatments, estimatedDuration: newDuration }
       }
       return a
     })
