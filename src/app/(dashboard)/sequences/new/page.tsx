@@ -45,6 +45,7 @@ import {
   MessageSquarePlus,
   ChevronDown,
   ChevronRight,
+  Check,
 } from 'lucide-react'
 import Link from 'next/link'
 import {
@@ -170,6 +171,11 @@ export default function NewSequencePage() {
     additionalContext: '',
   })
 
+  // Track which appointments (séances) are expanded - all start expanded
+  const [expandedAppointments, setExpandedAppointments] = useState<Set<string>>(() => {
+    // Initialize with the first appointment expanded
+    return new Set([formData.appointments[0]?.id].filter(Boolean))
+  })
   // Track which rationale sections are expanded (by appointment id)
   const [expandedDelayRationale, setExpandedDelayRationale] = useState<Set<string>>(new Set())
   const [expandedGroupingRationale, setExpandedGroupingRationale] = useState<Set<string>>(new Set())
@@ -181,6 +187,18 @@ export default function NewSequencePage() {
   const [expandedTreatmentNotes, setExpandedTreatmentNotes] = useState<Set<string>>(new Set())
   // Track which order rationale sections are expanded (by treatment id) - all start collapsed
   const [expandedOrderRationale, setExpandedOrderRationale] = useState<Set<string>>(new Set())
+
+  const toggleAppointmentExpanded = (appointmentId: string) => {
+    setExpandedAppointments(prev => {
+      const next = new Set(prev)
+      if (next.has(appointmentId)) {
+        next.delete(appointmentId)
+      } else {
+        next.add(appointmentId)
+      }
+      return next
+    })
+  }
 
   const toggleTreatmentExpanded = (treatmentId: string) => {
     setExpandedTreatments(prev => {
@@ -292,9 +310,12 @@ export default function NewSequencePage() {
 
   const addAppointment = () => {
     const newIndex = formData.appointments.length
+    const newAppointment = createAppointment(newIndex)
     updateFormData({
-      appointments: [...formData.appointments, createAppointment(newIndex)],
+      appointments: [...formData.appointments, newAppointment],
     })
+    // Auto-expand the new appointment
+    setExpandedAppointments(prev => new Set([...prev, newAppointment.id]))
   }
 
   const removeAppointment = (appointmentId: string) => {
@@ -318,10 +339,12 @@ export default function NewSequencePage() {
   }
 
   const addTreatment = (appointmentId: string) => {
+    const newTreatment = createTreatment(0) // Will be updated with correct index
     const updated = formData.appointments.map((a) => {
       if (a.id === appointmentId) {
         const newIndex = a.treatments.length
-        const newTreatments = [...a.treatments, createTreatment(newIndex)]
+        const treatmentWithIndex = { ...newTreatment, orderIndex: newIndex }
+        const newTreatments = [...a.treatments, treatmentWithIndex]
         return {
           ...a,
           treatments: newTreatments,
@@ -331,6 +354,8 @@ export default function NewSequencePage() {
       return a
     })
     updateFormData({ appointments: updated })
+    // Auto-expand the new treatment
+    setExpandedTreatments(prev => new Set([...prev, newTreatment.id]))
   }
 
   const removeTreatment = (appointmentId: string, treatmentId: string) => {
@@ -795,13 +820,7 @@ export default function NewSequencePage() {
 
           {/* Appointments */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xl font-semibold">Séances de traitement</h2>
-              <Button onClick={addAppointment}>
-                <Plus className="h-4 w-4 mr-2" />
-                Ajouter une séance
-              </Button>
-            </div>
+            <h2 className="text-xl font-semibold">Séances de traitement</h2>
 
             <div className="space-y-2">
               {formData.appointments.map((appointment, apptIndex) => (
@@ -956,7 +975,18 @@ export default function NewSequencePage() {
                   {/* Appointment card */}
                   <Accordion
                     type="multiple"
-                    defaultValue={[appointment.id]}
+                    value={expandedAppointments.has(appointment.id) ? [appointment.id] : []}
+                    onValueChange={(values) => {
+                      if (values.includes(appointment.id)) {
+                        setExpandedAppointments(prev => new Set([...prev, appointment.id]))
+                      } else {
+                        setExpandedAppointments(prev => {
+                          const next = new Set(prev)
+                          next.delete(appointment.id)
+                          return next
+                        })
+                      }
+                    }}
                   >
                     <AccordionItem
                       value={appointment.id}
@@ -1049,17 +1079,7 @@ export default function NewSequencePage() {
 
                       {/* Treatments */}
                       <div className="space-y-3">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-base font-semibold">Traitements</Label>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => addTreatment(appointment.id)}
-                          >
-                            <Plus className="h-4 w-4 mr-1" />
-                            Ajouter
-                          </Button>
-                        </div>
+                        <Label className="text-base font-semibold">Traitements</Label>
 
                         {appointment.treatments.map((treatment) => {
                           const treatmentInfo = getTreatmentById(treatment.treatmentCode)
@@ -1306,11 +1326,35 @@ export default function NewSequencePage() {
                                       </Select>
                                     </div>
                                   )}
+
+                                  {/* Validate and collapse button */}
+                                  <div className="pt-3 border-t">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="w-full text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
+                                      onClick={() => toggleTreatmentExpanded(treatment.id)}
+                                    >
+                                      <Check className="h-4 w-4 mr-2" />
+                                      Valider ce traitement
+                                    </Button>
+                                  </div>
                                 </CardContent>
                               )}
                             </Card>
                           )
                         })}
+
+                        {/* Add treatment button - at the bottom */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="w-full"
+                          onClick={() => addTreatment(appointment.id)}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Ajouter un traitement
+                        </Button>
 
                         {/* Collapsible grouping rationale - only show if more than 1 treatment */}
                         {appointment.treatments.length > 1 && (
@@ -1348,8 +1392,8 @@ export default function NewSequencePage() {
                         )}
                       </div>
 
-                          {/* Remove appointment button */}
-                          <div className="pt-2 border-t">
+                          {/* Action buttons */}
+                          <div className="pt-3 border-t flex items-center justify-between gap-2">
                             <Button
                               variant="ghost"
                               size="sm"
@@ -1358,7 +1402,16 @@ export default function NewSequencePage() {
                               disabled={formData.appointments.length <= 1}
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
-                              Supprimer cette séance
+                              Supprimer
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
+                              onClick={() => toggleAppointmentExpanded(appointment.id)}
+                            >
+                              <Check className="h-4 w-4 mr-2" />
+                              Valider cette séance
                             </Button>
                           </div>
                         </div>
@@ -1368,6 +1421,12 @@ export default function NewSequencePage() {
                 </div>
               ))}
             </div>
+
+            {/* Add appointment button - at the bottom */}
+            <Button onClick={addAppointment} variant="outline" className="w-full">
+              <Plus className="h-4 w-4 mr-2" />
+              Ajouter une séance
+            </Button>
           </div>
 
           {/* Submit */}
