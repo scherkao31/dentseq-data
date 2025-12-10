@@ -1143,31 +1143,30 @@ export default function NewSequencePage() {
                                     />
                                   </div>
 
-                                  {/* Row 3: Order constraint */}
+                                  {/* Row 3: Order constraint - segmented buttons */}
                                   <div className="space-y-2">
-                                    <Label className="text-xs">Contrainte d'ordre</Label>
-                                    <Select
-                                      value={treatment.orderConstraint}
-                                      onValueChange={(v: OrderConstraint) =>
-                                        updateTreatment(appointment.id, treatment.id, {
-                                          orderConstraint: v,
-                                        })
-                                      }
-                                    >
-                                      <SelectTrigger className="h-8">
-                                        <SelectValue />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {ORDER_CONSTRAINT_OPTIONS.map((opt) => (
-                                          <SelectItem key={opt.value} value={opt.value}>
-                                            <div className="flex flex-col">
-                                              <span>{opt.label}</span>
-                                              <span className="text-xs text-muted-foreground">{opt.description}</span>
-                                            </div>
-                                          </SelectItem>
-                                        ))}
-                                      </SelectContent>
-                                    </Select>
+                                    <Label className="text-xs">Ordre dans la séance</Label>
+                                    <div className="flex gap-1">
+                                      {ORDER_CONSTRAINT_OPTIONS.map((opt) => (
+                                        <button
+                                          key={opt.value}
+                                          type="button"
+                                          onClick={() =>
+                                            updateTreatment(appointment.id, treatment.id, {
+                                              orderConstraint: opt.value as OrderConstraint,
+                                            })
+                                          }
+                                          className={`flex-1 px-2 py-1.5 text-xs rounded-md border transition-colors ${
+                                            treatment.orderConstraint === opt.value
+                                              ? 'bg-primary text-primary-foreground border-primary'
+                                              : 'bg-background hover:bg-muted border-input'
+                                          }`}
+                                          title={opt.description}
+                                        >
+                                          {opt.label}
+                                        </button>
+                                      ))}
+                                    </div>
                                   </div>
 
                                   {/* Collapsible order rationale - only show if not flexible */}
