@@ -315,7 +315,11 @@ export default function NewSequencePage() {
       appointments: [...formData.appointments, newAppointment],
     })
     // Auto-expand the new appointment
-    setExpandedAppointments(prev => new Set([...prev, newAppointment.id]))
+    setExpandedAppointments(prev => {
+      const next = new Set(prev)
+      next.add(newAppointment.id)
+      return next
+    })
   }
 
   const removeAppointment = (appointmentId: string) => {
@@ -355,7 +359,11 @@ export default function NewSequencePage() {
     })
     updateFormData({ appointments: updated })
     // Auto-expand the new treatment
-    setExpandedTreatments(prev => new Set([...prev, newTreatment.id]))
+    setExpandedTreatments(prev => {
+      const next = new Set(prev)
+      next.add(newTreatment.id)
+      return next
+    })
   }
 
   const removeTreatment = (appointmentId: string, treatmentId: string) => {
@@ -978,7 +986,11 @@ export default function NewSequencePage() {
                     value={expandedAppointments.has(appointment.id) ? [appointment.id] : []}
                     onValueChange={(values) => {
                       if (values.includes(appointment.id)) {
-                        setExpandedAppointments(prev => new Set([...prev, appointment.id]))
+                        setExpandedAppointments(prev => {
+                          const next = new Set(prev)
+                          next.add(appointment.id)
+                          return next
+                        })
                       } else {
                         setExpandedAppointments(prev => {
                           const next = new Set(prev)
