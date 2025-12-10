@@ -82,6 +82,7 @@ export type DentalAnxiety = 'none' | 'mild' | 'moderate' | 'severe'
 export type AgeRange = 'no_impact' | '18-30' | '31-45' | '46-60' | '61-75' | '75+'
 export type Sex = 'no_impact' | 'male' | 'female'
 export type PainLevel = 'none' | 'mild' | 'moderate' | 'severe' | 'acute'
+export type OrderConstraint = 'strict' | 'preferred' | 'flexible'
 
 export type Database = {
   public: {
@@ -498,6 +499,8 @@ export type Database = {
           contingency_condition: string | null
           contingency_action: string | null
           estimated_duration_minutes: number | null
+          order_constraint: Database['public']['Enums']['order_constraint']
+          order_rationale: string | null
           created_at: string
           updated_at: string
         }
@@ -522,6 +525,8 @@ export type Database = {
           contingency_condition?: string | null
           contingency_action?: string | null
           estimated_duration_minutes?: number | null
+          order_constraint?: Database['public']['Enums']['order_constraint']
+          order_rationale?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -546,6 +551,8 @@ export type Database = {
           contingency_condition?: string | null
           contingency_action?: string | null
           estimated_duration_minutes?: number | null
+          order_constraint?: Database['public']['Enums']['order_constraint']
+          order_rationale?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -789,6 +796,7 @@ export type Database = {
       patient_priority: 'function' | 'aesthetics' | 'cost' | 'time' | 'durability' | 'minimal_intervention'
       dental_anxiety: 'none' | 'mild' | 'moderate' | 'severe'
       sequence_status: 'draft' | 'submitted' | 'under_review' | 'approved' | 'needs_revision'
+      order_constraint: 'strict' | 'preferred' | 'flexible'
     }
   }
 }

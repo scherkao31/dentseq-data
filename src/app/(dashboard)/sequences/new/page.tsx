@@ -54,12 +54,13 @@ import {
   BUDGET_CONSTRAINT_OPTIONS,
   TIME_CONSTRAINT_OPTIONS,
   PAIN_LEVEL_OPTIONS,
+  ORDER_CONSTRAINT_OPTIONS,
 } from '@/lib/constants'
 import {
   TREATMENT_CATEGORIES,
   type TreatmentCategory
 } from '@/lib/constants/treatments'
-import type { TreatmentPlan, AgeRange, Sex, BudgetConstraint, TimeConstraint, PainLevel } from '@/types/database'
+import type { TreatmentPlan, AgeRange, Sex, BudgetConstraint, TimeConstraint, PainLevel, OrderConstraint } from '@/types/database'
 
 type Treatment = {
   id: string
@@ -69,6 +70,8 @@ type Treatment = {
   notes: string
   estimatedDuration: number
   orderIndex: number
+  orderConstraint: OrderConstraint
+  orderRationale: string
 }
 
 type AppointmentGroup = {
@@ -109,6 +112,8 @@ const createTreatment = (orderIndex: number): Treatment => ({
   notes: '',
   estimatedDuration: 15,
   orderIndex,
+  orderConstraint: 'flexible',
+  orderRationale: '',
 })
 
 const createAppointment = (orderIndex: number): AppointmentGroup => ({
@@ -168,6 +173,8 @@ export default function NewSequencePage() {
   const [expandedAppointmentNotes, setExpandedAppointmentNotes] = useState<Set<string>>(new Set())
   // Track which treatment notes are expanded (by treatment id) - all start collapsed
   const [expandedTreatmentNotes, setExpandedTreatmentNotes] = useState<Set<string>>(new Set())
+  // Track which order rationale sections are expanded (by treatment id) - all start collapsed
+  const [expandedOrderRationale, setExpandedOrderRationale] = useState<Set<string>>(new Set())
 
   const toggleTreatmentExpanded = (treatmentId: string) => {
     setExpandedTreatments(prev => {
@@ -195,6 +202,18 @@ export default function NewSequencePage() {
 
   const toggleTreatmentNotes = (treatmentId: string) => {
     setExpandedTreatmentNotes(prev => {
+      const next = new Set(prev)
+      if (next.has(treatmentId)) {
+        next.delete(treatmentId)
+      } else {
+        next.add(treatmentId)
+      }
+      return next
+    })
+  }
+
+  const toggleOrderRationale = (treatmentId: string) => {
+    setExpandedOrderRationale(prev => {
       const next = new Set(prev)
       if (next.has(treatmentId)) {
         next.delete(treatmentId)
@@ -488,6 +507,8 @@ export default function NewSequencePage() {
             teeth: t.teeth,
             rationale_treatment: t.rationale || null,
             estimated_duration_minutes: t.estimatedDuration,
+            order_constraint: t.orderConstraint,
+            order_rationale: t.orderRationale || null,
           }
         })
 
@@ -1121,6 +1142,69 @@ export default function NewSequencePage() {
                                       }
                                     />
                                   </div>
+
+                                  {/* Row 3: Order constraint */}
+                                  <div className="space-y-2">
+                                    <Label className="text-xs">Contrainte d'ordre</Label>
+                                    <Select
+                                      value={treatment.orderConstraint}
+                                      onValueChange={(v: OrderConstraint) =>
+                                        updateTreatment(appointment.id, treatment.id, {
+                                          orderConstraint: v,
+                                        })
+                                      }
+                                    >
+                                      <SelectTrigger className="h-8">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {ORDER_CONSTRAINT_OPTIONS.map((opt) => (
+                                          <SelectItem key={opt.value} value={opt.value}>
+                                            <div className="flex flex-col">
+                                              <span>{opt.label}</span>
+                                              <span className="text-xs text-muted-foreground">{opt.description}</span>
+                                            </div>
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  {/* Collapsible order rationale - only show if not flexible */}
+                                  {treatment.orderConstraint !== 'flexible' && (
+                                    <div className="pt-2 border-t border-dashed">
+                                      <button
+                                        type="button"
+                                        onClick={() => toggleOrderRationale(treatment.id)}
+                                        className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                                      >
+                                        {expandedOrderRationale.has(treatment.id) ? (
+                                          <ChevronDown className="h-3 w-3" />
+                                        ) : (
+                                          <ChevronRight className="h-3 w-3" />
+                                        )}
+                                        <Hourglass className="h-3 w-3" />
+                                        <span>Justification de l'ordre</span>
+                                        {treatment.orderRationale && (
+                                          <span className="text-green-600 dark:text-green-400">✓</span>
+                                        )}
+                                      </button>
+                                      {expandedOrderRationale.has(treatment.id) && (
+                                        <div className="mt-2 pl-5">
+                                          <Textarea
+                                            placeholder="Expliquez pourquoi ce traitement doit être dans cet ordre..."
+                                            rows={2}
+                                            value={treatment.orderRationale}
+                                            onChange={(e) =>
+                                              updateTreatment(appointment.id, treatment.id, {
+                                                orderRationale: e.target.value,
+                                              })
+                                            }
+                                          />
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
 
                                   {/* Collapsible notes section */}
                                   <div className="pt-2 border-t border-dashed">

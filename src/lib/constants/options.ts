@@ -29,6 +29,13 @@ export const PAIN_LEVEL_OPTIONS = [
   { value: 'acute', label: 'Aiguë', description: 'Urgence, douleur insupportable' },
 ] as const
 
+// Treatment order constraint
+export const ORDER_CONSTRAINT_OPTIONS = [
+  { value: 'flexible', label: 'Flexible', description: 'L\'ordre n\'a pas d\'importance clinique' },
+  { value: 'preferred', label: 'Préféré', description: 'Mieux dans cet ordre mais pas obligatoire' },
+  { value: 'strict', label: 'Strict', description: 'Doit être fait dans cet ordre' },
+] as const
+
 // General health
 export const GENERAL_HEALTH_OPTIONS = [
   { value: 'healthy', label: 'Bonne santé' },
