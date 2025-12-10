@@ -79,8 +79,9 @@ export type BudgetConstraint = 'no_constraint' | 'moderate' | 'limited' | 'very_
 export type TimeConstraint = 'no_constraint' | 'moderate' | 'urgent' | 'very_urgent'
 export type PatientPriority = 'function' | 'aesthetics' | 'cost' | 'time' | 'durability' | 'minimal_intervention'
 export type DentalAnxiety = 'none' | 'mild' | 'moderate' | 'severe'
-export type AgeRange = '18-30' | '31-45' | '46-60' | '61-75' | '75+'
-export type Sex = 'male' | 'female' | 'other'
+export type AgeRange = 'no_impact' | '18-30' | '31-45' | '46-60' | '61-75' | '75+'
+export type Sex = 'no_impact' | 'male' | 'female'
+export type PainLevel = 'none' | 'mild' | 'moderate' | 'severe' | 'acute'
 
 export type Database = {
   public: {
@@ -226,8 +227,9 @@ export type Database = {
           budget_constraint: BudgetConstraint | null
           time_constraint: TimeConstraint | null
           time_constraint_details: string | null
-          patient_priorities: PatientPriority[] | null
-          dental_anxiety: DentalAnxiety | null
+          patient_priorities: PatientPriority[] | null  // DEPRECATED
+          dental_anxiety: DentalAnxiety | null  // DEPRECATED
+          pain_level: PainLevel | null
           additional_context: string | null
         }
         Insert: {
@@ -256,6 +258,7 @@ export type Database = {
           time_constraint_details?: string | null
           patient_priorities?: PatientPriority[] | null
           dental_anxiety?: DentalAnxiety | null
+          pain_level?: PainLevel | null
           additional_context?: string | null
         }
         Update: {
@@ -284,6 +287,7 @@ export type Database = {
           time_constraint_details?: string | null
           patient_priorities?: PatientPriority[] | null
           dental_anxiety?: DentalAnxiety | null
+          pain_level?: PainLevel | null
           additional_context?: string | null
         }
       }
@@ -415,6 +419,9 @@ export type Database = {
           delay_min: number | null
           delay_max: number | null
           delay_rationale: string | null
+          delay_reason: string | null
+          delay_rationale_text: string | null
+          grouping_rationale: string | null
           objectives: string[] | null
           prerequisites: string[] | null
           clinical_notes: string | null
@@ -435,6 +442,9 @@ export type Database = {
           delay_min?: number | null
           delay_max?: number | null
           delay_rationale?: string | null
+          delay_reason?: string | null
+          delay_rationale_text?: string | null
+          grouping_rationale?: string | null
           objectives?: string[] | null
           prerequisites?: string[] | null
           clinical_notes?: string | null
@@ -455,6 +465,9 @@ export type Database = {
           delay_min?: number | null
           delay_max?: number | null
           delay_rationale?: string | null
+          delay_reason?: string | null
+          delay_rationale_text?: string | null
+          grouping_rationale?: string | null
           objectives?: string[] | null
           prerequisites?: string[] | null
           clinical_notes?: string | null

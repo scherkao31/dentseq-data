@@ -139,6 +139,7 @@ export const DEFAULT_APPOINTMENT_TYPES: FormOptionItem[] = [
 // DELAY REASONS
 // ============================================================================
 export const DEFAULT_DELAY_REASONS: FormOptionItem[] = [
+  { id: 'no_delay_needed', label: 'Pas de délai nécessaire', description: 'Séances consécutives possibles', typicalWeeks: 0, isCustom: false, isEnabled: true },
   { id: 'bone_healing', label: 'Cicatrisation osseuse', typicalWeeks: 12, isCustom: false, isEnabled: true },
   { id: 'soft_tissue_healing', label: 'Cicatrisation tissus mous', typicalWeeks: 2, isCustom: false, isEnabled: true },
   { id: 'implant_osseointegration', label: 'Ostéointégration implant', typicalWeeks: 12, isCustom: false, isEnabled: true },

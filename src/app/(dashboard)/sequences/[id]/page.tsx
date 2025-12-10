@@ -363,11 +363,27 @@ export default async function SequenceDetailPage({
                       </div>
                     )}
 
-                    {/* Delay rationale */}
-                    {appt.delay_rationale && (
+                    {/* Delay reason (structured) */}
+                    {(appt.delay_rationale || appt.delay_reason) && (
                       <div>
                         <p className="text-sm text-muted-foreground mb-1">Raison du délai</p>
-                        <p>{appt.delay_rationale}</p>
+                        <p>{appt.delay_reason || appt.delay_rationale}</p>
+                      </div>
+                    )}
+
+                    {/* Delay rationale text (free-form) */}
+                    {appt.delay_rationale_text && (
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Justification du séquençage</p>
+                        <p className="text-sm bg-muted/50 p-2 rounded">{appt.delay_rationale_text}</p>
+                      </div>
+                    )}
+
+                    {/* Grouping rationale */}
+                    {appt.grouping_rationale && (
+                      <div>
+                        <p className="text-sm text-muted-foreground mb-1">Justification du regroupement</p>
+                        <p className="text-sm bg-muted/50 p-2 rounded">{appt.grouping_rationale}</p>
                       </div>
                     )}
 

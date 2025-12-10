@@ -5,6 +5,7 @@
 
 // Age ranges
 export const AGE_RANGE_OPTIONS = [
+  { value: 'no_impact', label: 'Pas d\'impact sur la séquence' },
   { value: '18-30', label: '18-30 ans' },
   { value: '31-45', label: '31-45 ans' },
   { value: '46-60', label: '46-60 ans' },
@@ -14,9 +15,18 @@ export const AGE_RANGE_OPTIONS = [
 
 // Sex
 export const SEX_OPTIONS = [
+  { value: 'no_impact', label: 'Pas d\'impact sur la séquence' },
   { value: 'male', label: 'Homme' },
   { value: 'female', label: 'Femme' },
-  { value: 'other', label: 'Autre' },
+] as const
+
+// Patient pain/sensitivity level
+export const PAIN_LEVEL_OPTIONS = [
+  { value: 'none', label: 'Aucune douleur' },
+  { value: 'mild', label: 'Légère', description: 'Gêne occasionnelle' },
+  { value: 'moderate', label: 'Modérée', description: 'Douleur au froid/chaud/mastication' },
+  { value: 'severe', label: 'Sévère', description: 'Douleur importante, affecte le quotidien' },
+  { value: 'acute', label: 'Aiguë', description: 'Urgence, douleur insupportable' },
 ] as const
 
 // General health
