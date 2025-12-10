@@ -13,6 +13,7 @@ import {
   X,
   BarChart3,
   Lightbulb,
+  Settings,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -60,6 +61,11 @@ const secondaryNavigation = [
     name: 'Mon profil',
     href: '/profile',
     icon: User,
+  },
+  {
+    name: 'Paramètres IA',
+    href: '/settings',
+    icon: Settings,
   },
 ]
 

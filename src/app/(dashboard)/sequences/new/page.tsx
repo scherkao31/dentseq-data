@@ -24,10 +24,12 @@ import {
   AccordionTrigger,
 } from '@/components/ui/accordion'
 import { useToast } from '@/hooks/use-toast'
+import { useFormOptions } from '@/hooks/use-form-options'
 import { createClient } from '@/lib/supabase/client'
-import { SingleToothSelector } from '@/components/dental/tooth-selector'
+import { ToothSelectorCompact } from '@/components/dental/tooth-selector'
 import {
   ArrowLeft,
+  ArrowDown,
   Plus,
   Trash2,
   GripVertical,
@@ -39,23 +41,19 @@ import {
   Wallet,
   Timer,
   Heart,
+  Hourglass,
 } from 'lucide-react'
 import Link from 'next/link'
 import {
-  APPOINTMENT_TYPE_OPTIONS,
   DELAY_UNIT_OPTIONS,
-  TREATMENT_GOALS,
   AGE_RANGE_OPTIONS,
   SEX_OPTIONS,
   BUDGET_CONSTRAINT_OPTIONS,
   TIME_CONSTRAINT_OPTIONS,
-  PATIENT_PRIORITY_OPTIONS,
   DENTAL_ANXIETY_OPTIONS,
 } from '@/lib/constants'
 import {
   TREATMENT_CATEGORIES,
-  getGroupedTreatments,
-  getTreatmentById,
   type TreatmentCategory
 } from '@/lib/constants/treatments'
 import type { TreatmentPlan, AgeRange, Sex, BudgetConstraint, TimeConstraint, PatientPriority, DentalAnxiety } from '@/types/database'
@@ -63,7 +61,7 @@ import type { TreatmentPlan, AgeRange, Sex, BudgetConstraint, TimeConstraint, Pa
 type Treatment = {
   id: string
   treatmentCode: string
-  toothNumber: string | null
+  teeth: string[]
   rationale: string
   notes: string
   estimatedDuration: number
@@ -103,7 +101,7 @@ type FormData = {
 const createTreatment = (orderIndex: number): Treatment => ({
   id: crypto.randomUUID(),
   treatmentCode: '',
-  toothNumber: null,
+  teeth: [],
   rationale: '',
   notes: '',
   estimatedDuration: 15,
@@ -129,6 +127,16 @@ export default function NewSequencePage() {
   const planIdParam = searchParams.get('planId')
   const { toast } = useToast()
   const supabase = useMemo(() => createClient(), [])
+
+  // Load dynamic form options
+  const {
+    treatmentGoals,
+    patientPriorities,
+    treatments: availableTreatments,
+    appointmentTypes,
+    delayReasons,
+    isLoading: optionsLoading
+  } = useFormOptions()
 
   const [isLoading, setIsLoading] = useState(true)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -250,6 +258,20 @@ export default function NewSequencePage() {
     updateFormData({ appointments: updated })
   }
 
+  // Handler for when a treatment type is selected - also sets default duration
+  const handleTreatmentSelect = (
+    appointmentId: string,
+    treatmentId: string,
+    treatmentCode: string
+  ) => {
+    const treatmentInfo = getTreatmentById(treatmentCode)
+    const defaultDuration = treatmentInfo?.typicalDuration || 15
+    updateTreatment(appointmentId, treatmentId, {
+      treatmentCode,
+      estimatedDuration: defaultDuration,
+    })
+  }
+
   const toggleGoal = (goalId: string) => {
     const current = formData.treatmentGoals
     if (current.includes(goalId)) {
@@ -268,7 +290,38 @@ export default function NewSequencePage() {
     }
   }
 
-  const groupedTreatments = useMemo(() => getGroupedTreatments(), [])
+  // Group treatments by category for the dropdown
+  const groupedTreatments = useMemo(() => {
+    const grouped: Record<TreatmentCategory, typeof availableTreatments> = {
+      diagnostic: [],
+      preventive: [],
+      restorative: [],
+      endodontic: [],
+      periodontal: [],
+      surgical: [],
+      implant: [],
+      prosthetic: [],
+      orthodontic: [],
+      other: [],
+    }
+
+    availableTreatments.forEach(treatment => {
+      const category = treatment.treatmentCategory || 'other'
+      if (grouped[category]) {
+        grouped[category].push(treatment)
+      }
+    })
+
+    // Remove empty categories
+    return Object.fromEntries(
+      Object.entries(grouped).filter(([, treatments]) => treatments.length > 0)
+    ) as Record<TreatmentCategory, typeof availableTreatments>
+  }, [availableTreatments])
+
+  // Helper to get treatment info by ID
+  const getTreatmentById = useCallback((treatmentId: string) => {
+    return availableTreatments.find(t => t.id === treatmentId)
+  }, [availableTreatments])
 
   const handleSubmit = async () => {
     if (!formData.planId) {
@@ -343,8 +396,8 @@ export default function NewSequencePage() {
         .single()
 
       if (seqError) {
-        console.error('Sequence error:', seqError)
-        throw seqError
+        console.error('Sequence error:', seqError.message, seqError.details, seqError.hint, seqError.code)
+        throw new Error(`Sequence creation failed: ${seqError.message}`)
       }
 
       // Create appointment groups
@@ -366,8 +419,8 @@ export default function NewSequencePage() {
           .single()
 
         if (apptError) {
-          console.error('Appointment error:', apptError)
-          throw apptError
+          console.error('Appointment error:', apptError.message, apptError.details, apptError.hint, apptError.code)
+          throw new Error(`Appointment creation failed: ${apptError.message}`)
         }
 
         // Create treatments for this appointment
@@ -377,8 +430,8 @@ export default function NewSequencePage() {
             appointment_group_id: appointmentGroup.id,
             position: t.orderIndex,
             treatment_type: t.treatmentCode,
-            treatment_category: treatmentInfo?.category || 'other',
-            teeth: t.toothNumber ? [t.toothNumber] : [],
+            treatment_category: treatmentInfo?.treatmentCategory || 'other',
+            teeth: t.teeth,
             rationale_treatment: t.rationale || null,
             estimated_duration_minutes: t.estimatedDuration,
           }
@@ -389,8 +442,8 @@ export default function NewSequencePage() {
           .insert(treatmentInserts)
 
         if (treatError) {
-          console.error('Treatment error:', treatError)
-          throw treatError
+          console.error('Treatment error:', treatError.message, treatError.details, treatError.hint, treatError.code)
+          throw new Error(`Treatment creation failed: ${treatError.message}`)
         }
       }
 
@@ -402,10 +455,11 @@ export default function NewSequencePage() {
       router.push(`/plans/${formData.planId}`)
     } catch (error) {
       console.error('Error:', error)
+      const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
       toast({
         variant: 'destructive',
         title: 'Erreur',
-        description: 'Impossible de créer la séquence',
+        description: `Impossible de créer la séquence: ${errorMessage}`,
       })
     } finally {
       setIsSubmitting(false)
@@ -576,18 +630,20 @@ export default function NewSequencePage() {
                   Qu'est-ce qui compte le plus pour ce patient ?
                 </p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                  {PATIENT_PRIORITY_OPTIONS.map((opt) => (
+                  {patientPriorities.map((opt) => (
                     <div
-                      key={opt.value}
+                      key={opt.id}
                       className={`p-3 rounded-lg border cursor-pointer transition-colors ${
-                        formData.patientPriorities.includes(opt.value as PatientPriority)
+                        formData.patientPriorities.includes(opt.id as PatientPriority)
                           ? 'border-primary bg-primary/5'
                           : 'border-border hover:border-primary/50'
                       }`}
-                      onClick={() => togglePriority(opt.value as PatientPriority)}
+                      onClick={() => togglePriority(opt.id as PatientPriority)}
                     >
                       <div className="font-medium text-sm">{opt.label}</div>
-                      <div className="text-xs text-muted-foreground">{opt.description}</div>
+                      {opt.description && (
+                        <div className="text-xs text-muted-foreground">{opt.description}</div>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -656,14 +712,14 @@ export default function NewSequencePage() {
               <div className="space-y-2">
                 <Label>Objectifs de traitement</Label>
                 <div className="flex flex-wrap gap-2">
-                  {TREATMENT_GOALS.map((goal) => (
+                  {treatmentGoals.map((goal) => (
                     <Badge
                       key={goal.id}
                       variant={formData.treatmentGoals.includes(goal.id) ? 'default' : 'outline'}
                       className="cursor-pointer"
                       onClick={() => toggleGoal(goal.id)}
                     >
-                      {goal.name}
+                      {goal.label}
                     </Badge>
                   ))}
                 </div>
@@ -681,138 +737,188 @@ export default function NewSequencePage() {
               </Button>
             </div>
 
-            <Accordion
-              type="multiple"
-              defaultValue={formData.appointments.map((a) => a.id)}
-              className="space-y-4"
-            >
+            <div className="space-y-2">
               {formData.appointments.map((appointment, apptIndex) => (
-                <AccordionItem
-                  key={appointment.id}
-                  value={appointment.id}
-                  className="border rounded-lg"
-                >
-                  <AccordionTrigger className="px-4 hover:no-underline">
-                    <div className="flex items-center gap-3 flex-1">
-                      <GripVertical className="h-4 w-4 text-muted-foreground" />
-                      <Calendar className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-semibold">{appointment.title}</span>
-                      {appointment.delayFromPrevious && apptIndex > 0 && (
-                        <Badge variant="secondary" className="ml-2">
-                          <Clock className="h-3 w-3 mr-1" />
-                          {appointment.delayFromPrevious}{' '}
-                          {DELAY_UNIT_OPTIONS.find((d) => d.value === appointment.delayUnit)?.label}
-                        </Badge>
-                      )}
-                      <Badge variant="outline" className="ml-auto mr-4">
-                        {appointment.treatments.length} traitement(s)
-                      </Badge>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-4 pb-4">
-                    <div className="space-y-4">
-                      {/* Appointment details */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Type de séance</Label>
-                          <Select
-                            value={appointment.appointmentType}
-                            onValueChange={(v) =>
-                              updateAppointment(appointment.id, { appointmentType: v })
-                            }
-                          >
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {APPOINTMENT_TYPE_OPTIONS.map((opt) => (
-                                <SelectItem key={opt.value} value={opt.value}>
-                                  {opt.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
+                <div key={appointment.id}>
+                  {/* Inter-appointment delay card - shown BEFORE the appointment (except first) */}
+                  {apptIndex > 0 && (
+                    <div className="relative py-4">
+                      {/* Vertical connector lines */}
+                      <div className="absolute left-6 top-0 bottom-0 w-px bg-border" />
 
-                        <div className="space-y-2">
-                          <Label>Durée estimée (min)</Label>
-                          <Input
-                            type="number"
-                            min={15}
-                            step={15}
-                            value={appointment.estimatedDuration}
-                            onChange={(e) =>
-                              updateAppointment(appointment.id, {
-                                estimatedDuration: parseInt(e.target.value) || 60,
-                              })
-                            }
-                          />
-                        </div>
+                      {/* Delay card */}
+                      <div className="ml-12 mr-4">
+                        <Card className="border-dashed border-2 border-orange-200 bg-orange-50/50 dark:bg-orange-950/20">
+                          <CardContent className="p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="p-2 rounded-full bg-orange-100 dark:bg-orange-900/50">
+                                <Hourglass className="h-4 w-4 text-orange-600" />
+                              </div>
+                              <div className="flex-1 space-y-3">
+                                <div className="flex items-center gap-2">
+                                  <span className="font-medium text-sm text-orange-800 dark:text-orange-200">
+                                    Délai avant {appointment.title}
+                                  </span>
+                                </div>
+
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                  <div className="flex items-center gap-2">
+                                    <Input
+                                      type="number"
+                                      min={0}
+                                      value={appointment.delayFromPrevious || ''}
+                                      onChange={(e) =>
+                                        updateAppointment(appointment.id, {
+                                          delayFromPrevious: parseInt(e.target.value) || 0,
+                                        })
+                                      }
+                                      className="w-20 h-8"
+                                      placeholder="0"
+                                    />
+                                    <Select
+                                      value={appointment.delayUnit}
+                                      onValueChange={(v) =>
+                                        updateAppointment(appointment.id, { delayUnit: v })
+                                      }
+                                    >
+                                      <SelectTrigger className="w-28 h-8">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {DELAY_UNIT_OPTIONS.map((opt) => (
+                                          <SelectItem key={opt.value} value={opt.value}>
+                                            {opt.label}
+                                          </SelectItem>
+                                        ))}
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+
+                                  <div className="md:col-span-2">
+                                    <Select
+                                      value={appointment.delayReason || ''}
+                                      onValueChange={(v) =>
+                                        updateAppointment(appointment.id, { delayReason: v })
+                                      }
+                                    >
+                                      <SelectTrigger className="h-8">
+                                        <SelectValue placeholder="Raison du délai..." />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        {delayReasons.map((reason) => (
+                                          <SelectItem key={reason.id} value={reason.label}>
+                                            <div className="flex items-center gap-2">
+                                              <span>{reason.label}</span>
+                                              {reason.typicalWeeks && (
+                                                <span className="text-xs text-muted-foreground">
+                                                  (~{reason.typicalWeeks} sem.)
+                                                </span>
+                                              )}
+                                            </div>
+                                          </SelectItem>
+                                        ))}
+                                        <SelectItem value="custom">Autre (personnalisé)</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                  </div>
+                                </div>
+
+                                {/* Custom reason input if "Autre" selected */}
+                                {appointment.delayReason === 'custom' && (
+                                  <Input
+                                    placeholder="Précisez la raison du délai..."
+                                    className="h-8"
+                                    onChange={(e) =>
+                                      updateAppointment(appointment.id, { delayReason: e.target.value })
+                                    }
+                                  />
+                                )}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
                       </div>
 
-                      {/* Delay from previous */}
-                      {apptIndex > 0 && (
-                        <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
-                          <Label className="text-sm font-medium">Délai depuis la séance précédente</Label>
-                          <div className="grid grid-cols-3 gap-4">
+                      {/* Arrow indicator */}
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2">
+                        <ArrowDown className="h-5 w-5 text-orange-400" />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Appointment card */}
+                  <Accordion
+                    type="multiple"
+                    defaultValue={[appointment.id]}
+                  >
+                    <AccordionItem
+                      value={appointment.id}
+                      className="border rounded-lg"
+                    >
+                      <AccordionTrigger className="px-4 hover:no-underline">
+                        <div className="flex items-center gap-3 flex-1">
+                          <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm">
+                            {apptIndex + 1}
+                          </div>
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <span className="font-semibold">{appointment.title}</span>
+                          <Badge variant="outline" className="ml-auto mr-4">
+                            {appointment.treatments.length} traitement(s)
+                          </Badge>
+                        </div>
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
+                        <div className="space-y-4">
+                          {/* Appointment details */}
+                          <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label className="text-xs text-muted-foreground">Durée</Label>
-                              <Input
-                                type="number"
-                                min={1}
-                                value={appointment.delayFromPrevious || ''}
-                                onChange={(e) =>
-                                  updateAppointment(appointment.id, {
-                                    delayFromPrevious: parseInt(e.target.value) || 1,
-                                  })
-                                }
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <Label className="text-xs text-muted-foreground">Unité</Label>
+                              <Label>Type de séance</Label>
                               <Select
-                                value={appointment.delayUnit}
+                                value={appointment.appointmentType}
                                 onValueChange={(v) =>
-                                  updateAppointment(appointment.id, { delayUnit: v })
+                                  updateAppointment(appointment.id, { appointmentType: v })
                                 }
                               >
                                 <SelectTrigger>
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  {DELAY_UNIT_OPTIONS.map((opt) => (
-                                    <SelectItem key={opt.value} value={opt.value}>
+                                  {appointmentTypes.map((opt) => (
+                                    <SelectItem key={opt.id} value={opt.id}>
                                       {opt.label}
                                     </SelectItem>
                                   ))}
                                 </SelectContent>
                               </Select>
                             </div>
+
                             <div className="space-y-2">
-                              <Label className="text-xs text-muted-foreground">Raison (optionnel)</Label>
+                              <Label>Durée estimée (min)</Label>
                               <Input
-                                placeholder="Cicatrisation..."
-                                value={appointment.delayReason}
+                                type="number"
+                                min={15}
+                                step={15}
+                                value={appointment.estimatedDuration}
                                 onChange={(e) =>
-                                  updateAppointment(appointment.id, { delayReason: e.target.value })
+                                  updateAppointment(appointment.id, {
+                                    estimatedDuration: parseInt(e.target.value) || 60,
+                                  })
                                 }
                               />
                             </div>
                           </div>
-                        </div>
-                      )}
 
-                      <div className="space-y-2">
-                        <Label>Objectifs de la séance</Label>
-                        <Textarea
-                          placeholder="Objectifs spécifiques à cette séance..."
-                          rows={2}
-                          value={appointment.objectives}
-                          onChange={(e) =>
-                            updateAppointment(appointment.id, { objectives: e.target.value })
-                          }
-                        />
-                      </div>
+                          <div className="space-y-2">
+                            <Label>Objectifs de la séance</Label>
+                            <Textarea
+                              placeholder="Objectifs spécifiques à cette séance..."
+                              rows={2}
+                              value={appointment.objectives}
+                              onChange={(e) =>
+                                updateAppointment(appointment.id, { objectives: e.target.value })
+                              }
+                            />
+                          </div>
 
                       {/* Treatments */}
                       <div className="space-y-3">
@@ -830,17 +936,16 @@ export default function NewSequencePage() {
 
                         {appointment.treatments.map((treatment) => (
                           <Card key={treatment.id} className="bg-muted/30">
-                            <CardContent className="p-4 space-y-3">
-                              <div className="flex items-start justify-between gap-4">
-                                <div className="flex-1 grid grid-cols-3 gap-4">
+                            <CardContent className="p-4 space-y-4">
+                              {/* Row 1: Treatment type, Duration, Delete button */}
+                              <div className="flex items-start gap-4">
+                                <div className="flex-1 grid grid-cols-2 gap-4">
                                   <div className="space-y-2">
                                     <Label className="text-xs">Traitement</Label>
                                     <Select
                                       value={treatment.treatmentCode}
                                       onValueChange={(v) =>
-                                        updateTreatment(appointment.id, treatment.id, {
-                                          treatmentCode: v,
-                                        })
+                                        handleTreatmentSelect(appointment.id, treatment.id, v)
                                       }
                                     >
                                       <SelectTrigger>
@@ -855,7 +960,7 @@ export default function NewSequencePage() {
                                               </div>
                                               {treatments.map((t) => (
                                                 <SelectItem key={t.id} value={t.id}>
-                                                  {t.name}
+                                                  {t.label}
                                                 </SelectItem>
                                               ))}
                                             </div>
@@ -863,18 +968,6 @@ export default function NewSequencePage() {
                                         )}
                                       </SelectContent>
                                     </Select>
-                                  </div>
-
-                                  <div className="space-y-2">
-                                    <Label className="text-xs">Dent concernée</Label>
-                                    <SingleToothSelector
-                                      selectedTooth={treatment.toothNumber}
-                                      onSelectionChange={(tooth) =>
-                                        updateTreatment(appointment.id, treatment.id, {
-                                          toothNumber: tooth,
-                                        })
-                                      }
-                                    />
                                   </div>
 
                                   <div className="space-y-2">
@@ -896,7 +989,7 @@ export default function NewSequencePage() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="shrink-0"
+                                  className="shrink-0 mt-6"
                                   onClick={() => removeTreatment(appointment.id, treatment.id)}
                                   disabled={appointment.treatments.length <= 1}
                                 >
@@ -904,6 +997,20 @@ export default function NewSequencePage() {
                                 </Button>
                               </div>
 
+                              {/* Row 2: Teeth selector */}
+                              <div className="space-y-2">
+                                <Label className="text-xs">Dent(s) concernée(s)</Label>
+                                <ToothSelectorCompact
+                                  selectedTeeth={treatment.teeth}
+                                  onSelectionChange={(teeth) =>
+                                    updateTreatment(appointment.id, treatment.id, {
+                                      teeth,
+                                    })
+                                  }
+                                />
+                              </div>
+
+                              {/* Row 3: Clinical rationale */}
                               <div className="space-y-2">
                                 <Label className="text-xs">Justification clinique</Label>
                                 <Textarea
@@ -922,24 +1029,26 @@ export default function NewSequencePage() {
                         ))}
                       </div>
 
-                      {/* Remove appointment button */}
-                      <div className="pt-2 border-t">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => removeAppointment(appointment.id)}
-                          disabled={formData.appointments.length <= 1}
-                        >
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Supprimer cette séance
-                        </Button>
-                      </div>
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
+                          {/* Remove appointment button */}
+                          <div className="pt-2 border-t">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => removeAppointment(appointment.id)}
+                              disabled={formData.appointments.length <= 1}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Supprimer cette séance
+                            </Button>
+                          </div>
+                        </div>
+                      </AccordionContent>
+                    </AccordionItem>
+                  </Accordion>
+                </div>
               ))}
-            </Accordion>
+            </div>
           </div>
 
           {/* Submit */}

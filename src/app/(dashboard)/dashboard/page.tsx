@@ -4,14 +4,91 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FileText, GitBranch, Star, Plus, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
-import { getStats, getCaseOverviews, getCasesWithoutSequences } from '@/lib/supabase/queries'
+import { createClient } from '@/lib/supabase/server'
+import type { TreatmentPlan } from '@/types/database'
+
+type PlanWithSequenceCount = TreatmentPlan & { sequence_count: number }
+
+async function getPlansWithSequenceCounts(limit: number): Promise<PlanWithSequenceCount[]> {
+  const supabase = await createClient()
+
+  // Get recent plans
+  const { data: plans, error } = await supabase
+    .from('treatment_plans')
+    .select('*')
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error || !plans) return []
+
+  // Get sequence counts
+  const planIds = plans.map(p => p.id)
+  const { data: sequences } = await supabase
+    .from('treatment_sequences')
+    .select('plan_id')
+    .in('plan_id', planIds)
+
+  const countMap: Record<string, number> = {}
+  sequences?.forEach(seq => {
+    if (seq.plan_id) {
+      countMap[seq.plan_id] = (countMap[seq.plan_id] || 0) + 1
+    }
+  })
+
+  return plans.map(plan => ({
+    ...plan,
+    sequence_count: countMap[plan.id] || 0,
+  })) as PlanWithSequenceCount[]
+}
+
+async function getPlansWithoutSequences(limit: number): Promise<PlanWithSequenceCount[]> {
+  const supabase = await createClient()
+
+  // Get all plans with status active or draft
+  const { data: plans, error } = await supabase
+    .from('treatment_plans')
+    .select('*')
+    .in('status', ['active', 'draft'])
+    .order('created_at', { ascending: false })
+
+  if (error || !plans) return []
+
+  // Get all sequences with plan_id
+  const planIds = plans.map(p => p.id)
+  const { data: sequences } = await supabase
+    .from('treatment_sequences')
+    .select('plan_id')
+    .in('plan_id', planIds)
+
+  const plansWithSequences = new Set(sequences?.map(s => s.plan_id) || [])
+
+  return plans
+    .filter(plan => !plansWithSequences.has(plan.id))
+    .slice(0, limit)
+    .map(plan => ({ ...plan, sequence_count: 0 })) as PlanWithSequenceCount[]
+}
+
+async function getStats() {
+  const supabase = await createClient()
+
+  const [plansResult, sequencesResult, evaluationsResult] = await Promise.all([
+    supabase.from('treatment_plans').select('id', { count: 'exact', head: true }),
+    supabase.from('treatment_sequences').select('id', { count: 'exact', head: true }),
+    supabase.from('sequence_evaluations').select('id', { count: 'exact', head: true }),
+  ])
+
+  return {
+    plans: plansResult.count || 0,
+    sequences: sequencesResult.count || 0,
+    evaluations: evaluationsResult.count || 0,
+  }
+}
 
 export default async function DashboardPage() {
-  // Get all data using query helpers
-  const [stats, recentCases, casesNeedingSequences] = await Promise.all([
+  const [stats, recentPlans, plansNeedingSequences] = await Promise.all([
     getStats(),
-    getCaseOverviews({ limit: 5 }),
-    getCasesWithoutSequences(3),
+    getPlansWithSequenceCounts(5),
+    getPlansWithoutSequences(3),
   ])
 
   return (
@@ -29,7 +106,7 @@ export default async function DashboardPage() {
           </div>
           <div className="flex gap-2">
             <Button asChild>
-              <Link href="/cases/new">
+              <Link href="/plans/new">
                 <Plus className="h-4 w-4 mr-2" />
                 Nouveau plan
               </Link>
@@ -51,7 +128,7 @@ export default async function DashboardPage() {
               <FileText className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{stats.cases}</div>
+              <div className="text-2xl font-bold">{stats.plans}</div>
               <p className="text-xs text-muted-foreground">
                 plans enregistrés
               </p>
@@ -84,30 +161,30 @@ export default async function DashboardPage() {
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">
-          {/* Recent cases */}
+          {/* Recent plans */}
           <Card>
             <CardHeader>
               <CardTitle>Plans récents</CardTitle>
               <CardDescription>Les derniers plans de traitement créés</CardDescription>
             </CardHeader>
             <CardContent>
-              {recentCases && recentCases.length > 0 ? (
+              {recentPlans && recentPlans.length > 0 ? (
                 <div className="space-y-3">
-                  {recentCases.map((caseItem) => (
+                  {recentPlans.map((plan) => (
                     <Link
-                      key={caseItem.id}
-                      href={`/cases/${caseItem.id}`}
+                      key={plan.id}
+                      href={`/plans/${plan.id}`}
                       className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{caseItem.case_number}</p>
+                        <p className="font-medium truncate">{plan.plan_number}</p>
                         <p className="text-sm text-muted-foreground truncate">
-                          {caseItem.title}
+                          {plan.title || plan.raw_input.slice(0, 50)}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 ml-4">
                         <Badge variant="secondary">
-                          {caseItem.sequence_count} séq.
+                          {plan.sequence_count} séq.
                         </Badge>
                         <ArrowRight className="h-4 w-4 text-muted-foreground" />
                       </div>
@@ -119,35 +196,35 @@ export default async function DashboardPage() {
                   <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
                   <p>Aucun plan pour le moment</p>
                   <Button asChild variant="link" className="mt-2">
-                    <Link href="/cases/new">Créer votre premier plan</Link>
+                    <Link href="/plans/new">Créer votre premier plan</Link>
                   </Button>
                 </div>
               )}
             </CardContent>
           </Card>
 
-          {/* Cases needing sequences */}
+          {/* Plans needing sequences */}
           <Card>
             <CardHeader>
               <CardTitle>Plans sans séquence</CardTitle>
               <CardDescription>Ces plans attendent votre contribution</CardDescription>
             </CardHeader>
             <CardContent>
-              {casesNeedingSequences && casesNeedingSequences.length > 0 ? (
+              {plansNeedingSequences && plansNeedingSequences.length > 0 ? (
                 <div className="space-y-3">
-                  {casesNeedingSequences.map((caseItem) => (
+                  {plansNeedingSequences.map((plan) => (
                     <div
-                      key={caseItem.id}
+                      key={plan.id}
                       className="flex items-center justify-between p-3 rounded-lg border"
                     >
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium truncate">{caseItem.case_number}</p>
+                        <p className="font-medium truncate">{plan.plan_number}</p>
                         <p className="text-sm text-muted-foreground truncate">
-                          {caseItem.title}
+                          {plan.title || plan.raw_input.slice(0, 50)}
                         </p>
                       </div>
                       <Button size="sm" asChild>
-                        <Link href={`/sequences/new?caseId=${caseItem.id}`}>
+                        <Link href={`/sequences/new?planId=${plan.id}`}>
                           <Plus className="h-4 w-4 mr-1" />
                           Séquencer
                         </Link>

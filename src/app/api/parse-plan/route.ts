@@ -2,6 +2,9 @@ import { anthropic } from '@ai-sdk/anthropic'
 import { generateObject } from 'ai'
 import { z } from 'zod'
 import { TREATMENTS, TREATMENT_CATEGORIES, type TreatmentCategory } from '@/lib/constants/treatments'
+import { createClient } from '@/lib/supabase/server'
+import { getDefaultAIConfig } from '@/lib/constants/ai-defaults'
+import type { AISettingConfig } from '@/types/database'
 
 export const maxDuration = 30
 
@@ -43,7 +46,31 @@ function buildTreatmentTaxonomy(): string {
   return result
 }
 
-const SYSTEM_PROMPT = `Tu es un expert en dentisterie qui parse des plans de traitement écrits en notation clinique abrégée.
+// Fetch AI settings from database
+async function getAISettings(): Promise<AISettingConfig> {
+  try {
+    const supabase = await createClient()
+    const { data, error } = await supabase
+      .from('ai_settings')
+      .select('config')
+      .eq('setting_key', 'plan_parser')
+      .single()
+
+    if (error || !data) {
+      console.log('Using default AI settings (no custom settings found)')
+      return getDefaultAIConfig('plan_parser')
+    }
+
+    return data.config as AISettingConfig
+  } catch (error) {
+    console.error('Error fetching AI settings:', error)
+    return getDefaultAIConfig('plan_parser')
+  }
+}
+
+// Build dynamic system prompt with custom settings
+function buildSystemPrompt(settings: AISettingConfig): string {
+  let prompt = `Tu es un expert en dentisterie qui parse des plans de traitement écrits en notation clinique abrégée.
 
 NOTATION DENTAIRE FDI:
 - Quadrant 1 (sup droit): 11-18
@@ -52,32 +79,37 @@ NOTATION DENTAIRE FDI:
 - Quadrant 4 (inf droit): 41-48
 
 ABRÉVIATIONS COURANTES:
-- CC = couronne céramique / couronne complète
-- CCM = couronne céramo-métallique
-- prov = provisoire
-- endo = traitement endodontique / dévitalisation
-- ext = extraction
-- impl = implant
-- SRP = surfaçage radiculaire
-- détartrage = scaling/prophylaxis
-- compo = composite
-- amalg = amalgame
-- RCT = root canal treatment
-- IC = inlay-core
-- bridge = prothèse fixée plurale
-- PAP = prothèse amovible partielle
-- PAC = prothèse amovible complète
-- Q1, Q2, Q3, Q4 = quadrants
+${settings.abbreviations}
 
 TAXONOMIE DES TRAITEMENTS DISPONIBLES:
-${buildTreatmentTaxonomy()}
+${buildTreatmentTaxonomy()}`
+
+  // Add custom treatments if provided
+  if (settings.custom_treatments?.trim()) {
+    prompt += `
+
+TRAITEMENTS PERSONNALISÉS (à reconnaître également):
+${settings.custom_treatments}`
+  }
+
+  prompt += `
 
 INSTRUCTIONS:
 1. Parse chaque élément du plan de traitement
 2. Identifie les dents concernées (notation FDI)
 3. Matche avec un treatment_type de la taxonomie si possible
 4. Assigne la catégorie appropriée
-5. Génère une description claire en français
+5. Génère une description claire en français`
+
+  // Add custom instructions if provided
+  if (settings.custom_instructions?.trim()) {
+    prompt += `
+
+INSTRUCTIONS SUPPLÉMENTAIRES:
+${settings.custom_instructions}`
+  }
+
+  prompt += `
 
 EXEMPLES:
 - "46 démonter CC + prov" → dent 46, dépose couronne + provisoire, restorative
@@ -85,6 +117,9 @@ EXEMPLES:
 - "SRP Q1-Q2" → quadrants 1 et 2, surfaçage radiculaire, periodontal
 - "11-21 facettes" → dents 11 et 21, facettes, restorative
 - "ext 38 48" → dents 38 et 48, extractions, surgical`
+
+  return prompt
+}
 
 export async function POST(req: Request) {
   try {
@@ -102,10 +137,14 @@ export async function POST(req: Request) {
 
     console.log('Parsing treatment plan:', rawInput)
 
+    // Fetch custom AI settings
+    const aiSettings = await getAISettings()
+    const systemPrompt = buildSystemPrompt(aiSettings)
+
     const result = await generateObject({
       model: anthropic('claude-sonnet-4-20250514'),
       schema: ParseResultSchema,
-      system: SYSTEM_PROMPT,
+      system: systemPrompt,
       prompt: `Parse ce plan de traitement dentaire:\n\n"${rawInput}"\n\nRetourne les éléments structurés avec les dents, types de traitement, et catégories.`,
     })
 

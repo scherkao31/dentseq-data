@@ -1,6 +1,56 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 // ============================================================================
+// AI SETTINGS: Customizable AI prompt components
+// ============================================================================
+export type AISettingKey = 'plan_parser' // Future: 'sequence_suggester', 'treatment_advisor', etc.
+
+export interface AISettingConfig {
+  abbreviations: string        // Custom abbreviations list
+  custom_treatments: string    // Additional treatments not in taxonomy
+  custom_instructions: string  // Extra parsing/processing rules
+  // Future fields can be added here without breaking existing data
+  [key: string]: string | undefined  // Extensible for future fields
+}
+
+// ============================================================================
+// FORM OPTIONS SETTINGS: Customizable dropdown/select options
+// ============================================================================
+export type FormOptionCategory =
+  | 'treatment_goals'
+  | 'patient_priorities'
+  | 'treatments'        // The main treatment taxonomy
+  | 'appointment_types'
+  | 'delay_reasons'
+  | 'medical_conditions'
+  | 'allergies'
+
+export interface FormOptionItem {
+  id: string
+  label: string
+  description?: string
+  // For treatments - which category they belong to
+  treatmentCategory?: TreatmentCategory
+  typicalDuration?: number
+  requiresLab?: boolean
+  // For delays
+  typicalWeeks?: number
+  // Metadata
+  isCustom: boolean  // true = user added, false = system default
+  isEnabled: boolean // allows disabling without deleting
+}
+
+export interface FormOptionsConfig {
+  treatment_goals: FormOptionItem[]
+  patient_priorities: FormOptionItem[]
+  treatments: FormOptionItem[]         // Full treatment taxonomy
+  appointment_types: FormOptionItem[]
+  delay_reasons: FormOptionItem[]
+  medical_conditions: FormOptionItem[]
+  allergies: FormOptionItem[]
+}
+
+// ============================================================================
 // NEW STRUCTURE: Treatment Plan Item (parsed from AI)
 // ============================================================================
 export interface TreatmentPlanItem {
@@ -575,6 +625,55 @@ export type Database = {
           created_at?: string
         }
       }
+      // ============================================================================
+      // AI SETTINGS: Configurable AI prompt components
+      // ============================================================================
+      ai_settings: {
+        Row: {
+          id: string
+          setting_key: AISettingKey      // 'plan_parser', future: 'sequence_suggester', etc.
+          config: AISettingConfig        // JSON with abbreviations, custom_treatments, etc.
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          setting_key: AISettingKey
+          config: AISettingConfig
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          setting_key?: AISettingKey
+          config?: AISettingConfig
+          updated_at?: string
+          updated_by?: string | null
+        }
+      }
+      // ============================================================================
+      // FORM OPTIONS: Customizable dropdown/select options
+      // ============================================================================
+      form_options: {
+        Row: {
+          id: string
+          config: FormOptionsConfig      // JSON with all customizable options
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          config: FormOptionsConfig
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          config?: FormOptionsConfig
+          updated_at?: string
+          updated_by?: string | null
+        }
+      }
     }
     Views: {
       plan_overview: {
@@ -696,6 +795,8 @@ export type AppointmentGroup = Tables<'appointment_groups'>
 export type Treatment = Tables<'treatments'>
 export type SequenceEvaluation = Tables<'sequence_evaluations'>
 export type ActivityLog = Tables<'activity_log'>
+export type AISetting = Tables<'ai_settings'>
+export type FormOptions = Tables<'form_options'>
 
 export type PlanOverview = Views<'plan_overview'>
 export type SequenceOverview = Views<'sequence_overview'>
