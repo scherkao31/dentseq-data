@@ -28,13 +28,25 @@ import {
   Edit2,
   Save,
   AlertCircle,
+  ChevronDown,
+  StickyNote,
 } from 'lucide-react'
 import Link from 'next/link'
-import { TREATMENT_CATEGORIES, getTreatmentById } from '@/lib/constants/treatments'
+import { TREATMENT_CATEGORIES, TREATMENTS, getTreatmentById, type TreatmentCategory as TreatmentCategoryType } from '@/lib/constants/treatments'
 import type { TreatmentPlanItem, TreatmentCategory } from '@/types/database'
+
+// Group treatments by category for the dropdown
+const groupedTreatments = TREATMENTS.reduce((acc, treatment) => {
+  if (!acc[treatment.category]) {
+    acc[treatment.category] = []
+  }
+  acc[treatment.category].push(treatment)
+  return acc
+}, {} as Record<TreatmentCategoryType, typeof TREATMENTS>)
 
 type ParsedItem = TreatmentPlanItem & {
   isEditing?: boolean
+  showNotes?: boolean
 }
 
 export default function NewPlanPage() {
@@ -167,7 +179,7 @@ export default function NewPlanPage() {
           last_modified_by: dentist.id,
           title: title || null,
           raw_input: rawInput,
-          treatment_items: parsedItems.map(({ isEditing, ...item }) => item),
+          treatment_items: parsedItems.map(({ isEditing, showNotes, ...item }) => item),
           dentistry_types: dentistryTypes,
           teeth_involved: teethInvolved,
           ai_parsed: true,
@@ -309,6 +321,48 @@ export default function NewPlanPage() {
                       {item.isEditing ? (
                         // Edit mode
                         <div className="space-y-3">
+                          {/* Row 1: Treatment type selector */}
+                          <div className="space-y-1">
+                            <Label className="text-xs">Type de traitement</Label>
+                            <Select
+                              value={item.treatment_type || '_custom'}
+                              onValueChange={(v) => {
+                                if (v === '_custom') {
+                                  updateParsedItem(index, { treatment_type: null })
+                                } else {
+                                  const treatmentInfo = getTreatmentById(v)
+                                  updateParsedItem(index, {
+                                    treatment_type: v,
+                                    category: treatmentInfo?.category as TreatmentCategory || item.category,
+                                    treatment_description: treatmentInfo?.name || item.treatment_description,
+                                  })
+                                }
+                              }}
+                            >
+                              <SelectTrigger>
+                                <SelectValue placeholder="Sélectionner un type..." />
+                              </SelectTrigger>
+                              <SelectContent className="max-h-80">
+                                <SelectItem value="_custom">
+                                  <span className="italic text-muted-foreground">Personnalisé (non listé)</span>
+                                </SelectItem>
+                                {Object.entries(groupedTreatments).map(([category, treatments]) => (
+                                  <div key={category}>
+                                    <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted">
+                                      {TREATMENT_CATEGORIES[category as TreatmentCategoryType]?.name}
+                                    </div>
+                                    {treatments.map((t) => (
+                                      <SelectItem key={t.id} value={t.id}>
+                                        {t.name}
+                                      </SelectItem>
+                                    ))}
+                                  </div>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+
+                          {/* Row 2: Teeth and Category */}
                           <div className="grid grid-cols-2 gap-3">
                             <div className="space-y-1">
                               <Label className="text-xs">Dents (séparées par virgules)</Label>
@@ -337,11 +391,25 @@ export default function NewPlanPage() {
                               </Select>
                             </div>
                           </div>
+
+                          {/* Row 3: Description */}
                           <div className="space-y-1">
                             <Label className="text-xs">Description</Label>
                             <Input
                               value={item.treatment_description}
                               onChange={(e) => updateParsedItem(index, { treatment_description: e.target.value })}
+                            />
+                          </div>
+
+                          {/* Row 4: Notes */}
+                          <div className="space-y-1">
+                            <Label className="text-xs">Notes (optionnel)</Label>
+                            <Textarea
+                              value={item.notes || ''}
+                              onChange={(e) => updateParsedItem(index, { notes: e.target.value || null })}
+                              placeholder="Notes additionnelles sur ce traitement..."
+                              rows={2}
+                              className="text-sm"
                             />
                           </div>
                           <div className="flex justify-end gap-2">
@@ -356,45 +424,79 @@ export default function NewPlanPage() {
                         </div>
                       ) : (
                         // View mode
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <Badge className={TREATMENT_CATEGORIES[item.category]?.color || ''}>
-                                {TREATMENT_CATEGORIES[item.category]?.name || item.category}
-                              </Badge>
-                              {item.teeth.length > 0 && (
-                                <span className="text-sm font-medium">
-                                  Dent{item.teeth.length > 1 ? 's' : ''}: {item.teeth.join(', ')}
-                                </span>
-                              )}
-                            </div>
-                            <p className="text-sm">{item.treatment_description}</p>
-                            <p className="text-xs text-muted-foreground font-mono">
-                              Original: "{item.raw_text}"
-                            </p>
-                            {item.treatment_type && (
-                              <p className="text-xs text-muted-foreground">
-                                Type: {getTreatmentById(item.treatment_type)?.name || item.treatment_type}
+                        <div className="space-y-2">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-1.5">
+                              {/* Type de traitement (info principale) */}
+                              <p className="text-sm font-medium">
+                                {item.treatment_type
+                                  ? getTreatmentById(item.treatment_type)?.name || item.treatment_description
+                                  : item.treatment_description}
                               </p>
-                            )}
+
+                              {/* Catégorie et dents */}
+                              <div className="flex items-center gap-3 text-xs">
+                                <div className="flex items-center gap-1.5">
+                                  <span className="text-muted-foreground">Catégorie:</span>
+                                  <Badge variant="secondary" className={`text-xs ${TREATMENT_CATEGORIES[item.category]?.color || ''}`}>
+                                    {TREATMENT_CATEGORIES[item.category]?.name || item.category}
+                                  </Badge>
+                                </div>
+                                {item.teeth.length > 0 && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-muted-foreground">Dent{item.teeth.length > 1 ? 's' : ''}:</span>
+                                    <span className="font-medium">{item.teeth.join(', ')}</span>
+                                  </div>
+                                )}
+                              </div>
+
+                              {/* Texte original */}
+                              <p className="text-xs text-muted-foreground font-mono">
+                                Original: "{item.raw_text}"
+                              </p>
+                            </div>
+                            <div className="flex gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8"
+                                onClick={() => updateParsedItem(index, { isEditing: true })}
+                              >
+                                <Edit2 className="h-4 w-4" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-8 w-8 text-destructive"
+                                onClick={() => removeParsedItem(index)}
+                              >
+                                <X className="h-4 w-4" />
+                              </Button>
+                            </div>
                           </div>
-                          <div className="flex gap-1">
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8"
-                              onClick={() => updateParsedItem(index, { isEditing: true })}
+
+                          {/* Collapsible notes section */}
+                          <div>
+                            <button
+                              type="button"
+                              onClick={() => updateParsedItem(index, { showNotes: !item.showNotes })}
+                              className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
                             >
-                              <Edit2 className="h-4 w-4" />
-                            </Button>
-                            <Button
-                              size="icon"
-                              variant="ghost"
-                              className="h-8 w-8 text-destructive"
-                              onClick={() => removeParsedItem(index)}
-                            >
-                              <X className="h-4 w-4" />
-                            </Button>
+                              <ChevronDown className={`h-3 w-3 transition-transform ${item.showNotes ? 'rotate-180' : ''}`} />
+                              <StickyNote className="h-3 w-3" />
+                              <span>Notes {item.notes ? '(1)' : ''}</span>
+                            </button>
+                            {item.showNotes && (
+                              <div className="mt-2 pl-5">
+                                <Textarea
+                                  value={item.notes || ''}
+                                  onChange={(e) => updateParsedItem(index, { notes: e.target.value || null })}
+                                  placeholder="Ajouter une note sur ce traitement..."
+                                  rows={2}
+                                  className="text-xs"
+                                />
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}

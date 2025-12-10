@@ -60,6 +60,7 @@ export interface TreatmentPlanItem {
   treatment_type: string | null       // Matched treatment ID or null if custom
   treatment_description: string       // "Dépose couronne + provisoire"
   category: TreatmentCategory         // "restorative"
+  notes?: string | null               // Optional notes added by dentist
 }
 
 export type TreatmentCategory =
@@ -501,6 +502,7 @@ export type Database = {
           estimated_duration_minutes: number | null
           order_constraint: Database['public']['Enums']['order_constraint']
           order_rationale: string | null
+          plan_item_id: string | null  // Reference to treatment_plan_item.id
           created_at: string
           updated_at: string
         }
@@ -527,6 +529,7 @@ export type Database = {
           estimated_duration_minutes?: number | null
           order_constraint?: Database['public']['Enums']['order_constraint']
           order_rationale?: string | null
+          plan_item_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -553,6 +556,7 @@ export type Database = {
           estimated_duration_minutes?: number | null
           order_constraint?: Database['public']['Enums']['order_constraint']
           order_rationale?: string | null
+          plan_item_id?: string | null
           created_at?: string
           updated_at?: string
         }

@@ -60,7 +60,8 @@ import {
   TREATMENT_CATEGORIES,
   type TreatmentCategory
 } from '@/lib/constants/treatments'
-import type { TreatmentPlan, AgeRange, Sex, BudgetConstraint, TimeConstraint, PainLevel, OrderConstraint } from '@/types/database'
+import type { TreatmentPlan, TreatmentPlanItem, AgeRange, Sex, BudgetConstraint, TimeConstraint, PainLevel, OrderConstraint } from '@/types/database'
+import { Link2 } from 'lucide-react'
 
 type Treatment = {
   id: string
@@ -72,6 +73,7 @@ type Treatment = {
   orderIndex: number
   orderConstraint: OrderConstraint
   orderRationale: string
+  planItemId: string | null  // Link to original plan item for ML traceability
 }
 
 type AppointmentGroup = {
@@ -114,6 +116,7 @@ const createTreatment = (orderIndex: number): Treatment => ({
   orderIndex,
   orderConstraint: 'flexible',
   orderRationale: '',
+  planItemId: null,
 })
 
 const createAppointment = (orderIndex: number): AppointmentGroup => {
@@ -530,6 +533,7 @@ export default function NewSequencePage() {
             estimated_duration_minutes: t.estimatedDuration,
             order_constraint: t.orderConstraint,
             order_rationale: t.orderRationale || null,
+            plan_item_id: t.planItemId || null,
           }
         })
 
@@ -1259,6 +1263,46 @@ export default function NewSequencePage() {
                                       </div>
                                     )}
                                   </div>
+
+                                  {/* Optional: Link to plan item for ML traceability */}
+                                  {planData?.treatment_items && planData.treatment_items.length > 0 && (
+                                    <div className="pt-2 border-t border-dashed">
+                                      <div className="flex items-center gap-2">
+                                        <Link2 className="h-3 w-3 text-muted-foreground" />
+                                        <Label className="text-xs text-muted-foreground">Lié à l'élément du plan</Label>
+                                      </div>
+                                      <Select
+                                        value={treatment.planItemId || '_none'}
+                                        onValueChange={(v) =>
+                                          updateTreatment(appointment.id, treatment.id, {
+                                            planItemId: v === '_none' ? null : v,
+                                          })
+                                        }
+                                      >
+                                        <SelectTrigger className="mt-1 h-8 text-xs">
+                                          <SelectValue placeholder="Non lié (optionnel)" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                          <SelectItem value="_none">
+                                            <span className="text-muted-foreground italic">Non lié</span>
+                                          </SelectItem>
+                                          {(planData.treatment_items as TreatmentPlanItem[]).map((item) => (
+                                            <SelectItem key={item.id} value={item.id}>
+                                              <span className="flex items-center gap-2">
+                                                <Badge variant="outline" className={`text-[10px] px-1 py-0 ${TREATMENT_CATEGORIES[item.category]?.color || ''}`}>
+                                                  {TREATMENT_CATEGORIES[item.category]?.name?.slice(0, 4) || item.category}
+                                                </Badge>
+                                                <span className="truncate max-w-[200px]">
+                                                  {item.teeth.length > 0 && `${item.teeth.join(', ')} - `}
+                                                  {item.treatment_description}
+                                                </span>
+                                              </span>
+                                            </SelectItem>
+                                          ))}
+                                        </SelectContent>
+                                      </Select>
+                                    </div>
+                                  )}
                                 </CardContent>
                               )}
                             </Card>

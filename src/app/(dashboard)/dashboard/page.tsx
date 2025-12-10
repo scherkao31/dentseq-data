@@ -104,20 +104,12 @@ export default async function DashboardPage() {
               Plateforme collaborative de séquences de traitement dentaire
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button asChild>
-              <Link href="/plans/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Nouveau plan
-              </Link>
-            </Button>
-            <Button variant="outline" asChild>
-              <Link href="/sequences/new">
-                <Plus className="h-4 w-4 mr-2" />
-                Nouvelle séquence
-              </Link>
-            </Button>
-          </div>
+          <Button asChild>
+            <Link href="/plans/new">
+              <Plus className="h-4 w-4 mr-2" />
+              Nouveau plan
+            </Link>
+          </Button>
         </div>
 
         {/* Stats cards */}

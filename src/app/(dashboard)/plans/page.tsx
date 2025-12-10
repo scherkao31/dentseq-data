@@ -25,6 +25,7 @@ import {
   Sparkles,
   Check,
   Clock,
+  User,
 } from 'lucide-react'
 import { TREATMENT_CATEGORIES, type TreatmentCategory } from '@/lib/constants/treatments'
 import type { TreatmentPlan, PlanStatus } from '@/types/database'
@@ -46,6 +47,7 @@ const STATUS_BADGE_PROPS: Record<PlanStatus, { variant: 'default' | 'secondary' 
 
 type PlanWithSequenceCount = TreatmentPlan & {
   sequence_count?: number
+  created_by_name?: string | null
 }
 
 export default function PlansPage() {
@@ -60,9 +62,9 @@ export default function PlansPage() {
     async function loadPlans() {
       setIsLoading(true)
 
-      // First get all plans
+      // Use the plan_overview view which includes created_by_name and sequence_count
       const { data: plansData, error } = await supabase
-        .from('treatment_plans')
+        .from('plan_overview')
         .select('*')
         .order('created_at', { ascending: false })
 
@@ -72,26 +74,7 @@ export default function PlansPage() {
         return
       }
 
-      // Then get sequence counts for each plan
-      const { data: sequenceCounts } = await supabase
-        .from('treatment_sequences')
-        .select('plan_id')
-        .not('plan_id', 'is', null)
-
-      // Compute counts
-      const countMap: Record<string, number> = {}
-      sequenceCounts?.forEach(seq => {
-        if (seq.plan_id) {
-          countMap[seq.plan_id] = (countMap[seq.plan_id] || 0) + 1
-        }
-      })
-
-      const plansWithCounts = (plansData || []).map(plan => ({
-        ...plan,
-        sequence_count: countMap[plan.id] || 0,
-      })) as PlanWithSequenceCount[]
-
-      setPlans(plansWithCounts)
+      setPlans((plansData || []) as PlanWithSequenceCount[])
       setIsLoading(false)
     }
 
@@ -292,9 +275,17 @@ export default function PlansPage() {
 
                       {/* Footer */}
                       <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {formatDate(plan.created_at)}
+                        <div className="flex items-center gap-4">
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            {formatDate(plan.created_at)}
+                          </div>
+                          {plan.created_by_name && (
+                            <div className="flex items-center gap-1">
+                              <User className="h-3 w-3" />
+                              <span className="truncate max-w-[100px]">{plan.created_by_name}</span>
+                            </div>
+                          )}
                         </div>
                         <div className="flex items-center gap-1">
                           <GitBranch className="h-3 w-3" />
