@@ -502,7 +502,7 @@ export type Database = {
           estimated_duration_minutes: number | null
           order_constraint: Database['public']['Enums']['order_constraint']
           order_rationale: string | null
-          plan_item_id: string | null  // Reference to treatment_plan_item.id
+          plan_item_ids: string[]  // References to treatment_plan_item.id values
           created_at: string
           updated_at: string
         }
@@ -529,7 +529,7 @@ export type Database = {
           estimated_duration_minutes?: number | null
           order_constraint?: Database['public']['Enums']['order_constraint']
           order_rationale?: string | null
-          plan_item_id?: string | null
+          plan_item_ids?: string[]
           created_at?: string
           updated_at?: string
         }
@@ -556,7 +556,7 @@ export type Database = {
           estimated_duration_minutes?: number | null
           order_constraint?: Database['public']['Enums']['order_constraint']
           order_rationale?: string | null
-          plan_item_id?: string | null
+          plan_item_ids?: string[]
           created_at?: string
           updated_at?: string
         }

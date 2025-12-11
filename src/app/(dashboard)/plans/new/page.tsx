@@ -55,7 +55,6 @@ export default function NewPlanPage() {
   const supabase = useMemo(() => createClient(), [])
 
   // Form state
-  const [title, setTitle] = useState('')
   const [rawInput, setRawInput] = useState('')
   const [notes, setNotes] = useState('')
 
@@ -177,7 +176,6 @@ export default function NewPlanPage() {
         .insert({
           created_by: dentist.id,
           last_modified_by: dentist.id,
-          title: title || null,
           raw_input: rawInput,
           treatment_items: parsedItems.map(({ isEditing, showNotes, ...item }) => item),
           dentistry_types: dentistryTypes,
@@ -240,16 +238,6 @@ export default function NewPlanPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="title">Titre (optionnel)</Label>
-                <Input
-                  id="title"
-                  placeholder="Ex: Réhabilitation secteur postérieur droit"
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                />
-              </div>
-
               <div className="space-y-2">
                 <Label htmlFor="rawInput">Plan de traitement *</Label>
                 <Textarea

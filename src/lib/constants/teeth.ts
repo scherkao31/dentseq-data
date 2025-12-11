@@ -49,14 +49,14 @@ export const ALL_TEETH = [
   '41', '42', '43', '44', '45', '46', '47', '48',
 ] as const
 
-// Quadrant teeth arrays for visual display
-// Upper right (Q1) - displayed right to left (from midline out): 18 to 11
-export const UPPER_RIGHT = ['18', '17', '16', '15', '14', '13', '12', '11'] as const
-// Upper left (Q2) - displayed left to right (from midline out): 21 to 28
+// Quadrant teeth arrays - ordered from midline (X1) to outside (X8)
+// Upper right (Q1): 11 (central incisor) to 18 (wisdom tooth)
+export const UPPER_RIGHT = ['11', '12', '13', '14', '15', '16', '17', '18'] as const
+// Upper left (Q2): 21 (central incisor) to 28 (wisdom tooth)
 export const UPPER_LEFT = ['21', '22', '23', '24', '25', '26', '27', '28'] as const
-// Lower left (Q3) - displayed left to right (from midline out): 31 to 38
+// Lower left (Q3): 31 (central incisor) to 38 (wisdom tooth)
 export const LOWER_LEFT = ['31', '32', '33', '34', '35', '36', '37', '38'] as const
-// Lower right (Q4) - displayed right to left (from midline out): 41 to 48
+// Lower right (Q4): 41 (central incisor) to 48 (wisdom tooth)
 export const LOWER_RIGHT = ['41', '42', '43', '44', '45', '46', '47', '48'] as const
 
 // Upper arch teeth (for display)

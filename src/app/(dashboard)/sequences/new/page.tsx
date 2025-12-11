@@ -27,6 +27,8 @@ import { useToast } from '@/hooks/use-toast'
 import { useFormOptions } from '@/hooks/use-form-options'
 import { createClient } from '@/lib/supabase/client'
 import { ToothSelectorCompact } from '@/components/dental/tooth-selector'
+import { TreatmentCombobox } from '@/components/dental/treatment-combobox'
+import { DelayReasonCombobox } from '@/components/dental/delay-reason-combobox'
 import {
   ArrowLeft,
   ArrowDown,
@@ -74,7 +76,7 @@ type Treatment = {
   orderIndex: number
   orderConstraint: OrderConstraint
   orderRationale: string
-  planItemId: string | null  // Link to original plan item for ML traceability
+  planItemIds: string[]  // Links to original plan items for ML traceability (can be multiple)
 }
 
 type AppointmentGroup = {
@@ -117,7 +119,7 @@ const createTreatment = (orderIndex: number): Treatment => ({
   orderIndex,
   orderConstraint: 'flexible',
   orderRationale: '',
-  planItemId: null,
+  planItemIds: [],
 })
 
 const createAppointment = (orderIndex: number): AppointmentGroup => {
@@ -127,9 +129,9 @@ const createAppointment = (orderIndex: number): AppointmentGroup => {
     title: `Séance ${orderIndex + 1}`,
     appointmentType: 'treatment',
     objectives: '',
-    delayFromPrevious: orderIndex === 0 ? null : 1,
-    delayUnit: 'weeks',
-    delayReason: '',
+    delayFromPrevious: orderIndex === 0 ? null : 0,
+    delayUnit: 'days',
+    delayReason: orderIndex === 0 ? '' : 'Pas de délai nécessaire',
     delayRationale: '',
     groupingRationale: '',
     estimatedDuration: initialTreatment.estimatedDuration, // Auto-calculated from treatments
@@ -187,6 +189,8 @@ export default function NewSequencePage() {
   const [expandedTreatmentNotes, setExpandedTreatmentNotes] = useState<Set<string>>(new Set())
   // Track which order rationale sections are expanded (by treatment id) - all start collapsed
   const [expandedOrderRationale, setExpandedOrderRationale] = useState<Set<string>>(new Set())
+  // Track which delay cards are expanded (by appointment id) - all start collapsed
+  const [expandedDelayCards, setExpandedDelayCards] = useState<Set<string>>(new Set())
 
   const toggleAppointmentExpanded = (appointmentId: string) => {
     setExpandedAppointments(prev => {
@@ -262,6 +266,18 @@ export default function NewSequencePage() {
 
   const toggleGroupingRationale = (appointmentId: string) => {
     setExpandedGroupingRationale(prev => {
+      const next = new Set(prev)
+      if (next.has(appointmentId)) {
+        next.delete(appointmentId)
+      } else {
+        next.add(appointmentId)
+      }
+      return next
+    })
+  }
+
+  const toggleDelayCard = (appointmentId: string) => {
+    setExpandedDelayCards(prev => {
       const next = new Set(prev)
       if (next.has(appointmentId)) {
         next.delete(appointmentId)
@@ -463,14 +479,7 @@ export default function NewSequencePage() {
       return
     }
 
-    if (!formData.patientAgeRange || !formData.patientSex) {
-      toast({
-        variant: 'destructive',
-        title: 'Erreur',
-        description: 'Veuillez renseigner l\'âge et le sexe du patient',
-      })
-      return
-    }
+    // Patient context validation removed - creating ideal sequences only for now
 
     setIsSubmitting(true)
 
@@ -566,7 +575,7 @@ export default function NewSequencePage() {
             estimated_duration_minutes: t.estimatedDuration,
             order_constraint: t.orderConstraint,
             order_rationale: t.orderRationale || null,
-            plan_item_id: t.planItemId || null,
+            plan_item_ids: t.planItemIds.length > 0 ? t.planItemIds : [],
           }
         })
 
@@ -585,7 +594,7 @@ export default function NewSequencePage() {
         description: 'La séquence de traitement a été créée avec succès',
       })
 
-      router.push(`/plans/${formData.planId}`)
+      router.push(`/sequences/${sequence.id}`)
     } catch (error) {
       console.error('Error:', error)
       const errorMessage = error instanceof Error ? error.message : 'Erreur inconnue'
@@ -680,7 +689,7 @@ export default function NewSequencePage() {
             </Card>
           )}
 
-          {/* Patient Context Card - NEW */}
+          {/* Patient Context Card - HIDDEN for ideal sequences (no patient context needed)
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -693,138 +702,10 @@ export default function NewSequencePage() {
             </CardHeader>
             <CardContent className="space-y-6">
               {/* Demographics */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Tranche d'âge *</Label>
-                  <Select
-                    value={formData.patientAgeRange}
-                    onValueChange={(v) => updateFormData({ patientAgeRange: v as AgeRange })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {AGE_RANGE_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Sexe *</Label>
-                  <Select
-                    value={formData.patientSex}
-                    onValueChange={(v) => updateFormData({ patientSex: v as Sex })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Sélectionner" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {SEX_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <Separator />
-
-              {/* Constraints */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <Wallet className="h-4 w-4" />
-                    Contrainte budgétaire
-                  </Label>
-                  <Select
-                    value={formData.budgetConstraint}
-                    onValueChange={(v) => updateFormData({ budgetConstraint: v as BudgetConstraint })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {BUDGET_CONSTRAINT_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label className="flex items-center gap-2">
-                    <Timer className="h-4 w-4" />
-                    Contrainte de temps
-                  </Label>
-                  <Select
-                    value={formData.timeConstraint}
-                    onValueChange={(v) => updateFormData({ timeConstraint: v as TimeConstraint })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {TIME_CONSTRAINT_OPTIONS.map((opt) => (
-                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              {formData.timeConstraint !== 'no_constraint' && (
-                <div className="space-y-2">
-                  <Label>Détails de la contrainte de temps</Label>
-                  <Input
-                    placeholder="Ex: Mariage dans 3 semaines, voyage prévu..."
-                    value={formData.timeConstraintDetails}
-                    onChange={(e) => updateFormData({ timeConstraintDetails: e.target.value })}
-                  />
-                </div>
-              )}
-
-              <Separator />
-
-              {/* Pain/sensitivity level */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Heart className="h-4 w-4" />
-                  Douleurs / sensibilité du patient
-                </Label>
-                <Select
-                  value={formData.painLevel}
-                  onValueChange={(v) => updateFormData({ painLevel: v as PainLevel })}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {PAIN_LEVEL_OPTIONS.map((opt) => (
-                      <SelectItem key={opt.value} value={opt.value}>
-                        <div className="flex flex-col">
-                          <span>{opt.label}</span>
-                          {'description' in opt && opt.description && (
-                            <span className="text-xs text-muted-foreground">{opt.description}</span>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Additional context */}
-              <div className="space-y-2">
-                <Label>Contexte additionnel (optionnel)</Label>
-                <Textarea
-                  placeholder="Autres informations pertinentes pour cette séquence..."
-                  rows={2}
-                  value={formData.additionalContext}
-                  onChange={(e) => updateFormData({ additionalContext: e.target.value })}
-                />
-              </div>
-            </CardContent>
+              {/* ... rest of patient context fields ... */}
+            {/*</CardContent>
           </Card>
+          */}
 
           {/* Appointments */}
           <div className="space-y-4">
@@ -839,21 +720,47 @@ export default function NewSequencePage() {
                       {/* Vertical connector lines */}
                       <div className="absolute left-6 top-0 bottom-0 w-px bg-border" />
 
-                      {/* Delay card */}
+                      {/* Delay card - Collapsible */}
                       <div className="ml-12 mr-4">
-                        <Card className="border-dashed border-2 border-orange-200 bg-orange-50/50 dark:bg-orange-950/20">
-                          <CardContent className="p-4">
-                            <div className="flex items-start gap-3">
-                              <div className="p-2 rounded-full bg-orange-100 dark:bg-orange-900/50">
-                                <Hourglass className="h-4 w-4 text-orange-600" />
+                        <Card className="border-dashed border-2 border-orange-200 bg-orange-50/50 dark:bg-orange-950/20 overflow-hidden">
+                          {/* Collapsed header - always visible */}
+                          <button
+                            type="button"
+                            onClick={() => toggleDelayCard(appointment.id)}
+                            className="w-full flex items-center gap-3 p-3 hover:bg-orange-100/50 dark:hover:bg-orange-900/30 transition-colors text-left"
+                          >
+                            {expandedDelayCards.has(appointment.id) ? (
+                              <ChevronDown className="h-4 w-4 text-orange-600 shrink-0" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4 text-orange-600 shrink-0" />
+                            )}
+                            <div className="p-1.5 rounded-full bg-orange-100 dark:bg-orange-900/50">
+                              <Hourglass className="h-3 w-3 text-orange-600" />
+                            </div>
+                            <span className="font-medium text-sm text-orange-800 dark:text-orange-200">
+                              Délai avant {appointment.title}
+                            </span>
+                            {/* Summary when collapsed */}
+                            {!expandedDelayCards.has(appointment.id) && (
+                              <div className="flex items-center gap-2 ml-auto text-xs text-orange-700 dark:text-orange-300">
+                                {appointment.delayFromPrevious ? (
+                                  <Badge variant="outline" className="border-orange-300 text-orange-700 dark:text-orange-300">
+                                    {appointment.delayFromPrevious} {DELAY_UNIT_OPTIONS.find(o => o.value === appointment.delayUnit)?.label || appointment.delayUnit}
+                                  </Badge>
+                                ) : (
+                                  <span className="text-muted-foreground italic">Non défini</span>
+                                )}
+                                {appointment.delayReason && appointment.delayReason !== 'Autre (personnalisé)' && (
+                                  <span className="truncate max-w-[150px] hidden sm:inline">{appointment.delayReason}</span>
+                                )}
                               </div>
-                              <div className="flex-1 space-y-3">
-                                <div className="flex items-center gap-2">
-                                  <span className="font-medium text-sm text-orange-800 dark:text-orange-200">
-                                    Délai avant {appointment.title}
-                                  </span>
-                                </div>
+                            )}
+                          </button>
 
+                          {/* Expanded content */}
+                          {expandedDelayCards.has(appointment.id) && (
+                            <CardContent className="p-4 pt-0 border-t border-orange-200/50">
+                              <div className="space-y-3">
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                                   <div className="flex items-center gap-2">
                                     <Input
@@ -888,7 +795,8 @@ export default function NewSequencePage() {
                                   </div>
 
                                   <div className="md:col-span-2">
-                                    <Select
+                                    <DelayReasonCombobox
+                                      reasons={delayReasons}
                                       value={appointment.delayReason || ''}
                                       onValueChange={(v) => {
                                         // If "Pas de délai nécessaire" is selected, set delay to 0
@@ -901,31 +809,13 @@ export default function NewSequencePage() {
                                           updateAppointment(appointment.id, { delayReason: v })
                                         }
                                       }}
-                                    >
-                                      <SelectTrigger className="h-8">
-                                        <SelectValue placeholder="Raison du délai..." />
-                                      </SelectTrigger>
-                                      <SelectContent>
-                                        {delayReasons.map((reason) => (
-                                          <SelectItem key={reason.id} value={reason.label}>
-                                            <div className="flex items-center gap-2">
-                                              <span>{reason.label}</span>
-                                              {reason.typicalWeeks && (
-                                                <span className="text-xs text-muted-foreground">
-                                                  (~{reason.typicalWeeks} sem.)
-                                                </span>
-                                              )}
-                                            </div>
-                                          </SelectItem>
-                                        ))}
-                                        <SelectItem value="custom">Autre (personnalisé)</SelectItem>
-                                      </SelectContent>
-                                    </Select>
+                                      placeholder="Raison du délai..."
+                                    />
                                   </div>
                                 </div>
 
                                 {/* Custom reason input if "Autre" selected */}
-                                {appointment.delayReason === 'custom' && (
+                                {appointment.delayReason === 'Autre (personnalisé)' && (
                                   <Input
                                     placeholder="Précisez la raison du délai..."
                                     className="h-8"
@@ -967,9 +857,22 @@ export default function NewSequencePage() {
                                     </div>
                                   )}
                                 </div>
+
+                                {/* Validate button */}
+                                <div className="pt-2 border-t border-orange-200/50">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="w-full text-green-600 hover:text-green-700 hover:bg-green-50 dark:hover:bg-green-950"
+                                    onClick={() => toggleDelayCard(appointment.id)}
+                                  >
+                                    <Check className="h-4 w-4 mr-2" />
+                                    Valider ce délai
+                                  </Button>
+                                </div>
                               </div>
-                            </div>
-                          </CardContent>
+                            </CardContent>
+                          )}
                         </Card>
                       </div>
 
@@ -1018,45 +921,6 @@ export default function NewSequencePage() {
                       </AccordionTrigger>
                       <AccordionContent className="px-4 pb-4">
                         <div className="space-y-4">
-                          {/* Appointment details */}
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Type de séance</Label>
-                              <Select
-                                value={appointment.appointmentType}
-                                onValueChange={(v) =>
-                                  updateAppointment(appointment.id, { appointmentType: v })
-                                }
-                              >
-                                <SelectTrigger>
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {appointmentTypes.map((opt) => (
-                                    <SelectItem key={opt.id} value={opt.id}>
-                                      {opt.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label>Durée estimée (min)</Label>
-                              <Input
-                                type="number"
-                                min={15}
-                                step={15}
-                                value={appointment.estimatedDuration}
-                                onChange={(e) =>
-                                  updateAppointment(appointment.id, {
-                                    estimatedDuration: parseInt(e.target.value) || 60,
-                                  })
-                                }
-                              />
-                            </div>
-                          </div>
-
                           {/* Collapsible notes section */}
                           <div className="pt-2">
                             <button
@@ -1146,32 +1010,14 @@ export default function NewSequencePage() {
                                   <div className="grid grid-cols-2 gap-4 pt-4">
                                     <div className="space-y-2">
                                       <Label className="text-xs">Traitement</Label>
-                                      <Select
+                                      <TreatmentCombobox
+                                        treatments={availableTreatments}
                                         value={treatment.treatmentCode}
                                         onValueChange={(v) =>
                                           handleTreatmentSelect(appointment.id, treatment.id, v)
                                         }
-                                      >
-                                        <SelectTrigger>
-                                          <SelectValue placeholder="Sélectionner..." />
-                                        </SelectTrigger>
-                                        <SelectContent className="max-h-80">
-                                          {Object.entries(groupedTreatments).map(
-                                            ([category, treatments]) => (
-                                              <div key={category}>
-                                                <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted">
-                                                  {TREATMENT_CATEGORIES[category as TreatmentCategory]?.name}
-                                                </div>
-                                                {treatments.map((t) => (
-                                                  <SelectItem key={t.id} value={t.id}>
-                                                    {t.label}
-                                                  </SelectItem>
-                                                ))}
-                                              </div>
-                                            )
-                                          )}
-                                        </SelectContent>
-                                      </Select>
+                                        placeholder="Rechercher un traitement..."
+                                      />
                                     </div>
 
                                     <div className="space-y-2">
@@ -1299,43 +1145,54 @@ export default function NewSequencePage() {
                                     )}
                                   </div>
 
-                                  {/* Optional: Link to plan item for ML traceability */}
+                                  {/* Optional: Link to plan items for ML traceability */}
                                   {planData?.treatment_items && planData.treatment_items.length > 0 && (
                                     <div className="pt-2 border-t border-dashed">
-                                      <div className="flex items-center gap-2">
+                                      <div className="flex items-center gap-2 mb-2">
                                         <Link2 className="h-3 w-3 text-muted-foreground" />
-                                        <Label className="text-xs text-muted-foreground">Lié à l'élément du plan</Label>
+                                        <Label className="text-xs text-muted-foreground">Lié aux éléments du plan</Label>
                                       </div>
-                                      <Select
-                                        value={treatment.planItemId || '_none'}
-                                        onValueChange={(v) =>
-                                          updateTreatment(appointment.id, treatment.id, {
-                                            planItemId: v === '_none' ? null : v,
-                                          })
-                                        }
-                                      >
-                                        <SelectTrigger className="mt-1 h-8 text-xs">
-                                          <SelectValue placeholder="Non lié (optionnel)" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                          <SelectItem value="_none">
-                                            <span className="text-muted-foreground italic">Non lié</span>
-                                          </SelectItem>
-                                          {(planData.treatment_items as TreatmentPlanItem[]).map((item) => (
-                                            <SelectItem key={item.id} value={item.id}>
-                                              <span className="flex items-center gap-2">
-                                                <Badge variant="outline" className={`text-[10px] px-1 py-0 ${TREATMENT_CATEGORIES[item.category]?.color || ''}`}>
-                                                  {TREATMENT_CATEGORIES[item.category]?.name?.slice(0, 4) || item.category}
-                                                </Badge>
-                                                <span className="truncate max-w-[200px]">
-                                                  {item.teeth.length > 0 && `${item.teeth.join(', ')} - `}
-                                                  {item.treatment_description}
-                                                </span>
+                                      <div className="space-y-1.5 max-h-[200px] overflow-y-auto rounded-md border p-2 bg-muted/30">
+                                        {(planData.treatment_items as TreatmentPlanItem[]).map((item) => {
+                                          const isSelected = treatment.planItemIds.includes(item.id)
+                                          return (
+                                            <label
+                                              key={item.id}
+                                              className={`flex items-center gap-2 p-1.5 rounded cursor-pointer transition-colors ${
+                                                isSelected
+                                                  ? 'bg-primary/10 border border-primary/30'
+                                                  : 'hover:bg-muted/50'
+                                              }`}
+                                            >
+                                              <input
+                                                type="checkbox"
+                                                checked={isSelected}
+                                                onChange={(e) => {
+                                                  const newPlanItemIds = e.target.checked
+                                                    ? [...treatment.planItemIds, item.id]
+                                                    : treatment.planItemIds.filter(id => id !== item.id)
+                                                  updateTreatment(appointment.id, treatment.id, {
+                                                    planItemIds: newPlanItemIds,
+                                                  })
+                                                }}
+                                                className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary"
+                                              />
+                                              <Badge variant="outline" className={`text-[10px] px-1 py-0 shrink-0 ${TREATMENT_CATEGORIES[item.category]?.color || ''}`}>
+                                                {TREATMENT_CATEGORIES[item.category]?.name?.slice(0, 4) || item.category}
+                                              </Badge>
+                                              <span className="text-xs truncate">
+                                                {item.teeth.length > 0 && `${item.teeth.join(', ')} - `}
+                                                {item.treatment_description}
                                               </span>
-                                            </SelectItem>
-                                          ))}
-                                        </SelectContent>
-                                      </Select>
+                                            </label>
+                                          )
+                                        })}
+                                      </div>
+                                      {treatment.planItemIds.length > 0 && (
+                                        <div className="mt-1 text-xs text-muted-foreground">
+                                          {treatment.planItemIds.length} élément{treatment.planItemIds.length > 1 ? 's' : ''} lié{treatment.planItemIds.length > 1 ? 's' : ''}
+                                        </div>
+                                      )}
                                     </div>
                                   )}
 
@@ -1403,6 +1260,24 @@ export default function NewSequencePage() {
                           </div>
                         )}
                       </div>
+
+                          {/* Appointment duration - at the end after all treatments */}
+                          <div className="pt-3 border-t flex items-center gap-3">
+                            <Label className="text-sm whitespace-nowrap">Durée totale de la séance:</Label>
+                            <Input
+                              type="number"
+                              min={15}
+                              step={15}
+                              value={appointment.estimatedDuration}
+                              onChange={(e) =>
+                                updateAppointment(appointment.id, {
+                                  estimatedDuration: parseInt(e.target.value) || 60,
+                                })
+                              }
+                              className="w-24"
+                            />
+                            <span className="text-sm text-muted-foreground">min</span>
+                          </div>
 
                           {/* Action buttons */}
                           <div className="pt-3 border-t flex items-center justify-between gap-2">

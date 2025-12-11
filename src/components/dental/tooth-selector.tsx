@@ -220,21 +220,21 @@ export function ToothSelector({
         </div>
       )}
 
-      {/* Dental chart */}
+      {/* Dental chart - View from dentist perspective (looking at patient from front) */}
       <div className="inline-block p-4 bg-muted/30 rounded-lg border">
         {/* Upper arch labels */}
         {showLabels && (
           <div className="flex justify-center gap-8 mb-2 text-xs text-muted-foreground font-medium">
-            <span>Quadrant 1 (sup. droit)</span>
-            <span>Quadrant 2 (sup. gauche)</span>
+            <span>Quadrant 1 (sup. droit patient)</span>
+            <span>Quadrant 2 (sup. gauche patient)</span>
           </div>
         )}
 
         {/* Upper arch */}
         <div className="flex justify-center gap-1">
-          {/* Upper right (Q1) - right to left: 18-11 */}
+          {/* Upper right (Q1) - on dentist's left, displayed from outside (18) to midline (11) */}
           <div className="flex gap-1">
-            {UPPER_RIGHT.map((tooth) => (
+            {[...UPPER_RIGHT].reverse().map((tooth) => (
               <ToothButton
                 key={tooth}
                 tooth={tooth}
@@ -249,7 +249,7 @@ export function ToothSelector({
           {/* Midline separator */}
           <div className="w-px bg-border mx-2" />
 
-          {/* Upper left (Q2) - left to right: 21-28 */}
+          {/* Upper left (Q2) - on dentist's right, displayed from midline (21) to outside (28) */}
           <div className="flex gap-1">
             {UPPER_LEFT.map((tooth) => (
               <ToothButton
@@ -271,9 +271,9 @@ export function ToothSelector({
 
         {/* Lower arch */}
         <div className="flex justify-center gap-1">
-          {/* Lower left (Q3) - left to right: 31-38 */}
+          {/* Lower right (Q4) - on dentist's left, displayed from outside (48) to midline (41) */}
           <div className="flex gap-1">
-            {LOWER_LEFT.map((tooth) => (
+            {[...LOWER_RIGHT].reverse().map((tooth) => (
               <ToothButton
                 key={tooth}
                 tooth={tooth}
@@ -288,9 +288,9 @@ export function ToothSelector({
           {/* Midline separator */}
           <div className="w-px bg-border mx-2" />
 
-          {/* Lower right (Q4) - right to left: 48-41 */}
+          {/* Lower left (Q3) - on dentist's right, displayed from midline (31) to outside (38) */}
           <div className="flex gap-1">
-            {LOWER_RIGHT.map((tooth) => (
+            {LOWER_LEFT.map((tooth) => (
               <ToothButton
                 key={tooth}
                 tooth={tooth}
@@ -306,8 +306,8 @@ export function ToothSelector({
         {/* Lower arch labels */}
         {showLabels && (
           <div className="flex justify-center gap-8 mt-2 text-xs text-muted-foreground font-medium">
-            <span>Quadrant 3 (inf. gauche)</span>
-            <span>Quadrant 4 (inf. droit)</span>
+            <span>Quadrant 4 (inf. droit patient)</span>
+            <span>Quadrant 3 (inf. gauche patient)</span>
           </div>
         )}
       </div>

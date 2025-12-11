@@ -107,7 +107,7 @@ export default async function DashboardPage() {
           <Button asChild>
             <Link href="/plans/new">
               <Plus className="h-4 w-4 mr-2" />
-              Nouveau plan
+              Nouveau plan de traitement
             </Link>
           </Button>
         </div>
