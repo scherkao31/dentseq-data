@@ -22,6 +22,7 @@ import { ToothSelectorCompact } from '@/components/dental/tooth-selector'
 import { useFormOptions } from '@/hooks/use-form-options'
 import {
   ArrowDown,
+  ArrowUp,
   Calendar,
   Clock,
   ChevronDown,
@@ -34,7 +35,8 @@ import {
   Hourglass,
   Save,
   Loader2,
-  GripVertical,
+  MoveUp,
+  MoveDown,
 } from 'lucide-react'
 import {
   DELAY_UNIT_OPTIONS,
@@ -208,7 +210,7 @@ export function SequenceTimeline({ sequenceId, appointments: initialAppointments
     }
 
     setAppointments(prev => [...prev, newAppointment])
-    setExpandedAppointments(prev => new Set([...prev, newAppointment.id]))
+    setExpandedAppointments(prev => new Set([...Array.from(prev), newAppointment.id]))
     setHasChanges(true)
   }, [appointments.length])
 
@@ -220,6 +222,59 @@ export function SequenceTimeline({ sequenceId, appointments: initialAppointments
     )
     setHasChanges(true)
   }, [appointments.length])
+
+  // Move appointment up/down
+  const moveAppointment = useCallback((appointmentId: string, direction: 'up' | 'down') => {
+    setAppointments(prev => {
+      const index = prev.findIndex(a => a.id === appointmentId)
+      if (index === -1) return prev
+      if (direction === 'up' && index === 0) return prev
+      if (direction === 'down' && index === prev.length - 1) return prev
+
+      const newIndex = direction === 'up' ? index - 1 : index + 1
+      const newAppointments = [...prev]
+
+      // Swap appointments
+      const temp = newAppointments[index]
+      newAppointments[index] = newAppointments[newIndex]
+      newAppointments[newIndex] = temp
+
+      // Update positions and titles
+      return newAppointments.map((a, idx) => ({
+        ...a,
+        position: idx,
+        title: `Séance ${idx + 1}`,
+      }))
+    })
+    setHasChanges(true)
+  }, [])
+
+  // Move treatment up/down within an appointment
+  const moveTreatment = useCallback((appointmentId: string, treatmentId: string, direction: 'up' | 'down') => {
+    setAppointments(prev => prev.map(a => {
+      if (a.id !== appointmentId) return a
+
+      const index = a.treatments.findIndex(t => t.id === treatmentId)
+      if (index === -1) return a
+      if (direction === 'up' && index === 0) return a
+      if (direction === 'down' && index === a.treatments.length - 1) return a
+
+      const newIndex = direction === 'up' ? index - 1 : index + 1
+      const newTreatments = [...a.treatments]
+
+      // Swap treatments
+      const temp = newTreatments[index]
+      newTreatments[index] = newTreatments[newIndex]
+      newTreatments[newIndex] = temp
+
+      // Update positions
+      return {
+        ...a,
+        treatments: newTreatments.map((t, idx) => ({ ...t, position: idx })),
+      }
+    }))
+    setHasChanges(true)
+  }, [])
 
   const saveChanges = async () => {
     setIsSaving(true)
@@ -442,14 +497,42 @@ export function SequenceTimeline({ sequenceId, appointments: initialAppointments
               )}
 
               <Card className="ml-0 border-2 hover:border-primary/30 transition-colors">
-                {/* Appointment header - clickable */}
-                <button
-                  type="button"
-                  onClick={() => toggleAppointment(appointment.id)}
-                  className="w-full"
-                >
-                  <CardHeader className="pb-2">
-                    <div className="flex items-center gap-3">
+                {/* Appointment header */}
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-3">
+                    {/* Move buttons */}
+                    <div className="flex flex-col gap-0.5">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          moveAppointment(appointment.id, 'up')
+                        }}
+                        disabled={index === 0}
+                      >
+                        <MoveUp className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          moveAppointment(appointment.id, 'down')
+                        }}
+                        disabled={index === appointments.length - 1}
+                      >
+                        <MoveDown className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => toggleAppointment(appointment.id)}
+                      className="flex-1 flex items-center gap-3"
+                    >
                       <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-primary-foreground font-bold">
                         {index + 1}
                       </div>
@@ -470,16 +553,16 @@ export function SequenceTimeline({ sequenceId, appointments: initialAppointments
                       ) : (
                         <ChevronRight className="h-5 w-5 text-muted-foreground" />
                       )}
-                    </div>
-                  </CardHeader>
-                </button>
+                    </button>
+                  </div>
+                </CardHeader>
 
                 {/* Expanded content */}
                 {expandedAppointments.has(appointment.id) && (
                   <CardContent className="space-y-4">
                     {/* Treatments */}
                     <div className="space-y-2">
-                      {appointment.treatments.map((treatment) => (
+                      {appointment.treatments.map((treatment, treatmentIndex) => (
                         <div
                           key={treatment.id}
                           className={`p-3 rounded-lg border transition-colors ${
@@ -582,31 +665,63 @@ export function SequenceTimeline({ sequenceId, appointments: initialAppointments
                             </div>
                           ) : (
                             /* View mode */
-                            <div
-                              className="flex items-center gap-3 cursor-pointer"
-                              onClick={() => setEditingTreatment(treatment.id)}
-                            >
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="font-medium">
-                                    {getTreatmentLabel(treatment.treatment_type)}
-                                  </span>
-                                  {treatment.teeth.length > 0 && (
-                                    <Badge variant="outline" className="text-xs">
-                                      {treatment.teeth.sort((a, b) => parseInt(a) - parseInt(b)).join(', ')}
-                                    </Badge>
+                            <div className="flex items-center gap-2">
+                              {/* Move buttons for treatments */}
+                              {appointment.treatments.length > 1 && (
+                                <div className="flex flex-col gap-0.5">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      moveTreatment(appointment.id, treatment.id, 'up')
+                                    }}
+                                    disabled={treatmentIndex === 0}
+                                  >
+                                    <MoveUp className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      moveTreatment(appointment.id, treatment.id, 'down')
+                                    }}
+                                    disabled={treatmentIndex === appointment.treatments.length - 1}
+                                  >
+                                    <MoveDown className="h-3 w-3" />
+                                  </Button>
+                                </div>
+                              )}
+
+                              <div
+                                className="flex-1 flex items-center gap-3 cursor-pointer"
+                                onClick={() => setEditingTreatment(treatment.id)}
+                              >
+                                <div className="flex-1">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-medium">
+                                      {getTreatmentLabel(treatment.treatment_type)}
+                                    </span>
+                                    {treatment.teeth.length > 0 && (
+                                      <Badge variant="outline" className="text-xs">
+                                        {treatment.teeth.sort((a, b) => parseInt(a) - parseInt(b)).join(', ')}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  {treatment.rationale_treatment && (
+                                    <p className="text-xs text-muted-foreground mt-1 truncate">
+                                      {treatment.rationale_treatment}
+                                    </p>
                                   )}
                                 </div>
-                                {treatment.rationale_treatment && (
-                                  <p className="text-xs text-muted-foreground mt-1 truncate">
-                                    {treatment.rationale_treatment}
-                                  </p>
-                                )}
+                                <Badge variant="secondary" className="shrink-0">
+                                  {treatment.estimated_duration_minutes || 0} min
+                                </Badge>
+                                <Edit2 className="h-4 w-4 text-muted-foreground" />
                               </div>
-                              <Badge variant="secondary" className="shrink-0">
-                                {treatment.estimated_duration_minutes || 0} min
-                              </Badge>
-                              <Edit2 className="h-4 w-4 text-muted-foreground" />
                             </div>
                           )}
                         </div>

@@ -34,7 +34,6 @@ import {
   ArrowDown,
   Plus,
   Trash2,
-  GripVertical,
   Save,
   Loader2,
   Calendar,
@@ -48,6 +47,8 @@ import {
   ChevronDown,
   ChevronRight,
   Check,
+  MoveUp,
+  MoveDown,
 } from 'lucide-react'
 import Link from 'next/link'
 import {
@@ -343,6 +344,57 @@ export default function NewSequencePage() {
     const updated = formData.appointments
       .filter((a) => a.id !== appointmentId)
       .map((a, idx) => ({ ...a, orderIndex: idx, title: `Séance ${idx + 1}` }))
+    updateFormData({ appointments: updated })
+  }
+
+  // Move appointment up/down
+  const moveAppointment = (appointmentId: string, direction: 'up' | 'down') => {
+    const index = formData.appointments.findIndex(a => a.id === appointmentId)
+    if (index === -1) return
+    if (direction === 'up' && index === 0) return
+    if (direction === 'down' && index === formData.appointments.length - 1) return
+
+    const newIndex = direction === 'up' ? index - 1 : index + 1
+    const newAppointments = [...formData.appointments]
+
+    // Swap appointments
+    const temp = newAppointments[index]
+    newAppointments[index] = newAppointments[newIndex]
+    newAppointments[newIndex] = temp
+
+    // Update positions and titles
+    const updated = newAppointments.map((a, idx) => ({
+      ...a,
+      orderIndex: idx,
+      title: `Séance ${idx + 1}`,
+    }))
+    updateFormData({ appointments: updated })
+  }
+
+  // Move treatment up/down within an appointment
+  const moveTreatment = (appointmentId: string, treatmentId: string, direction: 'up' | 'down') => {
+    const updated = formData.appointments.map(a => {
+      if (a.id !== appointmentId) return a
+
+      const index = a.treatments.findIndex(t => t.id === treatmentId)
+      if (index === -1) return a
+      if (direction === 'up' && index === 0) return a
+      if (direction === 'down' && index === a.treatments.length - 1) return a
+
+      const newIndex = direction === 'up' ? index - 1 : index + 1
+      const newTreatments = [...a.treatments]
+
+      // Swap treatments
+      const temp = newTreatments[index]
+      newTreatments[index] = newTreatments[newIndex]
+      newTreatments[newIndex] = temp
+
+      // Update positions
+      return {
+        ...a,
+        treatments: newTreatments.map((t, idx) => ({ ...t, orderIndex: idx })),
+      }
+    })
     updateFormData({ appointments: updated })
   }
 
@@ -909,6 +961,33 @@ export default function NewSequencePage() {
                     >
                       <AccordionTrigger className="px-4 hover:no-underline">
                         <div className="flex items-center gap-3 flex-1">
+                          {/* Move buttons */}
+                          <div className="flex flex-col gap-0.5" onClick={(e) => e.stopPropagation()}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                moveAppointment(appointment.id, 'up')
+                              }}
+                              disabled={apptIndex === 0}
+                            >
+                              <MoveUp className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                moveAppointment(appointment.id, 'down')
+                              }}
+                              disabled={apptIndex === formData.appointments.length - 1}
+                            >
+                              <MoveDown className="h-3 w-3" />
+                            </Button>
+                          </div>
                           <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary/10 text-primary font-semibold text-sm">
                             {apptIndex + 1}
                           </div>
@@ -957,51 +1036,74 @@ export default function NewSequencePage() {
                       <div className="space-y-3">
                         <Label className="text-base font-semibold">Traitements</Label>
 
-                        {appointment.treatments.map((treatment) => {
+                        {appointment.treatments.map((treatment, treatmentIndex) => {
                           const treatmentInfo = getTreatmentById(treatment.treatmentCode)
                           const isExpanded = expandedTreatments.has(treatment.id)
 
                           return (
                             <Card key={treatment.id} className="bg-muted/30 overflow-hidden">
                               {/* Collapsed header - always visible */}
-                              <button
-                                type="button"
-                                onClick={() => toggleTreatmentExpanded(treatment.id)}
-                                className="w-full flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors text-left"
-                              >
-                                {isExpanded ? (
-                                  <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
-                                ) : (
-                                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                                )}
-                                <div className="flex-1 flex items-center gap-2 min-w-0">
-                                  <span className="font-medium truncate">
-                                    {treatmentInfo?.label || treatment.treatmentCode || 'Nouveau traitement'}
-                                  </span>
-                                  {treatment.teeth.length > 0 && (
-                                    <Badge variant="outline" className="shrink-0 text-xs">
-                                      {treatment.teeth.length} dent{treatment.teeth.length > 1 ? 's' : ''} : {treatment.teeth.sort((a, b) => parseInt(a) - parseInt(b)).join(', ')}
-                                    </Badge>
-                                  )}
-                                  {treatment.estimatedDuration && (
-                                    <Badge variant="secondary" className="shrink-0 text-xs">
-                                      {treatment.estimatedDuration} min
-                                    </Badge>
-                                  )}
+                              <div className="flex items-center">
+                                {/* Move treatment buttons */}
+                                <div className="flex flex-col gap-0.5 pl-2">
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={() => moveTreatment(appointment.id, treatment.id, 'up')}
+                                    disabled={treatmentIndex === 0}
+                                  >
+                                    <MoveUp className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="h-5 w-5"
+                                    onClick={() => moveTreatment(appointment.id, treatment.id, 'down')}
+                                    disabled={treatmentIndex === appointment.treatments.length - 1}
+                                  >
+                                    <MoveDown className="h-3 w-3" />
+                                  </Button>
                                 </div>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="shrink-0 h-7 w-7"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    removeTreatment(appointment.id, treatment.id)
-                                  }}
-                                  disabled={appointment.treatments.length <= 1}
+                                <button
+                                  type="button"
+                                  onClick={() => toggleTreatmentExpanded(treatment.id)}
+                                  className="flex-1 flex items-center gap-3 p-3 hover:bg-muted/50 transition-colors text-left"
                                 >
-                                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                                </Button>
-                              </button>
+                                  {isExpanded ? (
+                                    <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  ) : (
+                                    <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  )}
+                                  <div className="flex-1 flex items-center gap-2 min-w-0">
+                                    <span className="font-medium truncate">
+                                      {treatmentInfo?.label || treatment.treatmentCode || 'Nouveau traitement'}
+                                    </span>
+                                    {treatment.teeth.length > 0 && (
+                                      <Badge variant="outline" className="shrink-0 text-xs">
+                                        {treatment.teeth.length} dent{treatment.teeth.length > 1 ? 's' : ''} : {treatment.teeth.sort((a, b) => parseInt(a) - parseInt(b)).join(', ')}
+                                      </Badge>
+                                    )}
+                                    {treatment.estimatedDuration && (
+                                      <Badge variant="secondary" className="shrink-0 text-xs">
+                                        {treatment.estimatedDuration} min
+                                      </Badge>
+                                    )}
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    className="shrink-0 h-7 w-7"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      removeTreatment(appointment.id, treatment.id)
+                                    }}
+                                    disabled={appointment.treatments.length <= 1}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                                  </Button>
+                                </button>
+                              </div>
 
                               {/* Expanded content */}
                               {isExpanded && (
