@@ -1391,7 +1391,7 @@ export default function NewSequencePage() {
                               disabled={formData.appointments.length <= 1}
                             >
                               <Trash2 className="h-4 w-4 mr-2" />
-                              Supprimer
+                              Supprimer cette séance
                             </Button>
                             <Button
                               size="sm"

@@ -26,7 +26,9 @@ import {
   Wallet,
   Timer,
   Clock,
+  Trash2,
 } from 'lucide-react'
+import { DeleteSequenceButton } from '@/components/sequences/delete-sequence-button'
 import {
   SEQUENCE_STATUS_OPTIONS,
   AGE_RANGE_OPTIONS,
@@ -50,6 +52,11 @@ export default function SequencesPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [reloadKey, setReloadKey] = useState(0)
+
+  const handleSequenceDeleted = () => {
+    setReloadKey(prev => prev + 1)
+  }
 
   useEffect(() => {
     async function loadSequences() {
@@ -130,7 +137,7 @@ export default function SequencesPage() {
     }
 
     loadSequences()
-  }, [supabase])
+  }, [supabase, reloadKey])
 
   const filteredSequences = useMemo(() => {
     return sequences.filter(seq => {
@@ -214,82 +221,82 @@ export default function SequencesPage() {
         ) : filteredSequences.length > 0 ? (
           <div className="grid gap-4">
             {filteredSequences.map((sequence) => (
-              <Link key={sequence.id} href={`/sequences/${sequence.id}`}>
-                <Card className="hover:border-primary/50 transition-colors cursor-pointer">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-mono text-sm text-muted-foreground">
-                            {sequence.sequence_number}
-                          </span>
-                          <StatusBadge
-                            status={sequence.status || 'draft'}
-                            options={SEQUENCE_STATUS_OPTIONS}
-                          />
-                        </div>
-                        <h3 className="font-semibold truncate">
-                          {sequence.title || 'Séquence sans titre'}
-                        </h3>
+              <Card key={sequence.id} className="hover:border-primary/50 transition-colors">
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-4">
+                    <Link href={`/sequences/${sequence.id}`} className="flex-1 min-w-0 cursor-pointer">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono text-sm text-muted-foreground">
+                          {sequence.sequence_number}
+                        </span>
+                        <StatusBadge
+                          status={sequence.status || 'draft'}
+                          options={SEQUENCE_STATUS_OPTIONS}
+                        />
+                      </div>
+                      <h3 className="font-semibold truncate">
+                        {sequence.title || 'Séquence sans titre'}
+                      </h3>
 
-                        {/* Plan info */}
-                        {sequence.plan && (
-                          <p className="text-sm text-muted-foreground mt-1 font-mono truncate">
-                            {sequence.plan.plan_number}: {sequence.plan.raw_input}
-                          </p>
+                      {/* Plan info */}
+                      {sequence.plan && (
+                        <p className="text-sm text-muted-foreground mt-1 font-mono truncate">
+                          {sequence.plan.plan_number}: {sequence.plan.raw_input}
+                        </p>
+                      )}
+
+                      {/* Patient context */}
+                      <div className="flex flex-wrap items-center gap-2 mt-2">
+                        {sequence.patient_age_range && (
+                          <Badge variant="outline" className="text-xs">
+                            <User className="h-3 w-3 mr-1" />
+                            {AGE_RANGE_OPTIONS.find(o => o.value === sequence.patient_age_range)?.label}
+                          </Badge>
                         )}
-
-                        {/* Patient context */}
-                        <div className="flex flex-wrap items-center gap-2 mt-2">
-                          {sequence.patient_age_range && (
-                            <Badge variant="outline" className="text-xs">
-                              <User className="h-3 w-3 mr-1" />
-                              {AGE_RANGE_OPTIONS.find(o => o.value === sequence.patient_age_range)?.label}
-                            </Badge>
-                          )}
-                          {sequence.patient_sex && (
-                            <Badge variant="outline" className="text-xs">
-                              {SEX_OPTIONS.find(o => o.value === sequence.patient_sex)?.label}
-                            </Badge>
-                          )}
-                          {sequence.budget_constraint && sequence.budget_constraint !== 'no_constraint' && (
-                            <Badge variant="secondary" className="text-xs">
-                              <Wallet className="h-3 w-3 mr-1" />
-                              {BUDGET_CONSTRAINT_OPTIONS.find(o => o.value === sequence.budget_constraint)?.label}
-                            </Badge>
-                          )}
-                          {sequence.time_constraint && sequence.time_constraint !== 'no_constraint' && (
-                            <Badge variant="secondary" className="text-xs">
-                              <Timer className="h-3 w-3 mr-1" />
-                              {TIME_CONSTRAINT_OPTIONS.find(o => o.value === sequence.time_constraint)?.label}
-                            </Badge>
-                          )}
-                        </div>
-
-                        {/* Patient priorities */}
-                        {sequence.patient_priorities && sequence.patient_priorities.length > 0 && (
-                          <div className="flex flex-wrap gap-1 mt-2">
-                            {sequence.patient_priorities.slice(0, 3).map(priority => (
-                              <Badge key={priority} variant="secondary" className="text-xs bg-primary/10">
-                                {PATIENT_PRIORITY_OPTIONS.find(o => o.value === priority)?.label || priority}
-                              </Badge>
-                            ))}
-                            {sequence.patient_priorities.length > 3 && (
-                              <Badge variant="secondary" className="text-xs">
-                                +{sequence.patient_priorities.length - 3}
-                              </Badge>
-                            )}
-                          </div>
+                        {sequence.patient_sex && (
+                          <Badge variant="outline" className="text-xs">
+                            {SEX_OPTIONS.find(o => o.value === sequence.patient_sex)?.label}
+                          </Badge>
                         )}
-
-                        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            {formatDate(sequence.created_at)}
-                          </span>
-                        </div>
+                        {sequence.budget_constraint && sequence.budget_constraint !== 'no_constraint' && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Wallet className="h-3 w-3 mr-1" />
+                            {BUDGET_CONSTRAINT_OPTIONS.find(o => o.value === sequence.budget_constraint)?.label}
+                          </Badge>
+                        )}
+                        {sequence.time_constraint && sequence.time_constraint !== 'no_constraint' && (
+                          <Badge variant="secondary" className="text-xs">
+                            <Timer className="h-3 w-3 mr-1" />
+                            {TIME_CONSTRAINT_OPTIONS.find(o => o.value === sequence.time_constraint)?.label}
+                          </Badge>
+                        )}
                       </div>
 
+                      {/* Patient priorities */}
+                      {sequence.patient_priorities && sequence.patient_priorities.length > 0 && (
+                        <div className="flex flex-wrap gap-1 mt-2">
+                          {sequence.patient_priorities.slice(0, 3).map(priority => (
+                            <Badge key={priority} variant="secondary" className="text-xs bg-primary/10">
+                              {PATIENT_PRIORITY_OPTIONS.find(o => o.value === priority)?.label || priority}
+                            </Badge>
+                          ))}
+                          {sequence.patient_priorities.length > 3 && (
+                            <Badge variant="secondary" className="text-xs">
+                              +{sequence.patient_priorities.length - 3}
+                            </Badge>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {formatDate(sequence.created_at)}
+                        </span>
+                      </div>
+                    </Link>
+
+                    <div className="flex items-center gap-4">
                       <div className="flex items-center gap-6 text-sm">
                         <div className="text-center">
                           <div className="flex items-center gap-1 text-muted-foreground">
@@ -306,10 +313,18 @@ export default function SequencesPage() {
                           <span className="text-xs text-muted-foreground">traitements</span>
                         </div>
                       </div>
+
+                      <DeleteSequenceButton
+                        sequenceId={sequence.id}
+                        sequenceNumber={sequence.sequence_number || undefined}
+                        onDeleted={handleSequenceDeleted}
+                        size="icon"
+                        showLabel={false}
+                      />
                     </div>
-                  </CardContent>
-                </Card>
-              </Link>
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
         ) : (

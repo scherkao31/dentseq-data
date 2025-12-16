@@ -24,7 +24,9 @@ import {
   Sparkles,
   FileText,
   Loader2,
+  Trash2,
 } from 'lucide-react'
+import { DeleteSequenceButton } from '@/components/sequences/delete-sequence-button'
 import { TREATMENT_CATEGORIES, type TreatmentCategory } from '@/lib/constants/treatments'
 import {
   AGE_RANGE_OPTIONS,
@@ -59,6 +61,11 @@ export default function PlanDetailPage() {
   const [plan, setPlan] = useState<TreatmentPlan | null>(null)
   const [sequences, setSequences] = useState<SequenceWithCounts[]>([])
   const [isLoading, setIsLoading] = useState(true)
+  const [reloadKey, setReloadKey] = useState(0)
+
+  const handleSequenceDeleted = () => {
+    setReloadKey(prev => prev + 1)
+  }
 
   useEffect(() => {
     async function loadPlanAndSequences() {
@@ -141,7 +148,7 @@ export default function PlanDetailPage() {
     }
 
     loadPlanAndSequences()
-  }, [planId, supabase, toast, router])
+  }, [planId, supabase, toast, router, reloadKey])
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('fr-FR', {
@@ -327,25 +334,32 @@ export default function PlanDetailPage() {
                 const statusOpt = SEQUENCE_STATUS_OPTIONS.find(o => o.value === seq.status)
 
                 return (
-                  <Link key={seq.id} href={`/sequences/${seq.id}`}>
-                    <Card className="h-full hover:border-primary/50 transition-colors cursor-pointer">
-                      <CardHeader className="pb-3">
-                        <div className="flex items-start justify-between">
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <Badge variant="outline">{seq.sequence_number}</Badge>
-                              <Badge
-                                variant={seq.status === 'approved' ? 'default' : seq.status === 'draft' ? 'secondary' : 'outline'}
-                              >
-                                {statusOpt?.label || seq.status}
-                              </Badge>
-                            </div>
-                            <CardTitle className="text-base">
-                              {seq.title || `Séquence ${seq.sequence_number}`}
-                            </CardTitle>
+                  <Card key={seq.id} className="h-full hover:border-primary/50 transition-colors">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-start justify-between">
+                        <Link href={`/sequences/${seq.id}`} className="flex-1 cursor-pointer">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Badge variant="outline">{seq.sequence_number}</Badge>
+                            <Badge
+                              variant={seq.status === 'approved' ? 'default' : seq.status === 'draft' ? 'secondary' : 'outline'}
+                            >
+                              {statusOpt?.label || seq.status}
+                            </Badge>
                           </div>
-                        </div>
-                      </CardHeader>
+                          <CardTitle className="text-base">
+                            {seq.title || `Séquence ${seq.sequence_number}`}
+                          </CardTitle>
+                        </Link>
+                        <DeleteSequenceButton
+                          sequenceId={seq.id}
+                          sequenceNumber={seq.sequence_number || undefined}
+                          onDeleted={handleSequenceDeleted}
+                          size="icon"
+                          showLabel={false}
+                        />
+                      </div>
+                    </CardHeader>
+                    <Link href={`/sequences/${seq.id}`} className="block cursor-pointer">
                       <CardContent className="space-y-3">
                         {/* Patient context summary */}
                         <div className="grid grid-cols-2 gap-2 text-sm">
@@ -397,8 +411,8 @@ export default function PlanDetailPage() {
                           </div>
                         </div>
                       </CardContent>
-                    </Card>
-                  </Link>
+                    </Link>
+                  </Card>
                 )
               })}
             </div>

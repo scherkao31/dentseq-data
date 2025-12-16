@@ -14,8 +14,8 @@ import { formatDate } from '@/lib/utils'
 import { TREATMENT_CATEGORIES } from '@/lib/constants/treatments'
 import { createClient } from '@/lib/supabase/server'
 import { SequenceHeader } from '@/components/sequences/sequence-header'
-import { SequenceTimeline } from '@/components/sequences/sequence-timeline'
-import type { TreatmentPlan, TreatmentCategory } from '@/types/database'
+import { SequenceContent } from '@/components/sequences/sequence-content'
+import type { TreatmentPlan, TreatmentCategory, TreatmentPlanItem } from '@/types/database'
 
 async function getSequenceWithDetails(id: string) {
   const supabase = await createClient()
@@ -73,9 +73,20 @@ async function getSequenceWithDetails(id: string) {
     })
   )
 
+  // Extract plan items for ML traceability linking
+  const planItems = plan?.treatment_items
+    ? (plan.treatment_items as TreatmentPlanItem[]).map(item => ({
+        id: item.id,
+        treatment_description: item.treatment_description,
+        teeth: item.teeth,
+        category: item.category,
+      }))
+    : []
+
   return {
     ...sequence,
     plan,
+    planItems,
     creator_name: creator?.full_name || 'Inconnu',
     appointments: appointmentsWithTreatments,
   }
@@ -169,14 +180,12 @@ export default async function SequenceDetailPage({
           </Card>
         )}
 
-        {/* Editable Timeline */}
-        <div>
-          <h2 className="text-lg font-semibold mb-4">Séances de traitement</h2>
-          <SequenceTimeline
-            sequenceId={id}
-            appointments={sequence.appointments}
-          />
-        </div>
+        {/* Sequence Content - View/Edit toggle */}
+        <SequenceContent
+          sequenceId={id}
+          appointments={sequence.appointments}
+          planItems={sequence.planItems}
+        />
       </div>
     </>
   )
